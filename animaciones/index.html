@@ -1,0 +1,1012 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Básculas camioneras JB</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0d2c4f; --panel:#0a223e; --ink:#e8f1ff; --muted:#9dbbe0; --dim:#8db4e2;
+    --rule:rgba(232,241,255,.14); --accent:#ffc857; --chip:rgba(232,241,255,.06); --chip-on:rgba(255,200,87,.14);
+    --sans:'IBM Plex Sans',system-ui,sans-serif; --mono:'IBM Plex Mono',ui-monospace,monospace;
+    --ease-out:cubic-bezier(.23,1,.32,1);
+    color-scheme:dark;
+  }
+  :root[data-theme=papel]{
+    --bg:#f3f0e8; --panel:#fbf9f4; --ink:#1c2431; --muted:#56657a; --dim:#56657a;
+    --rule:rgba(28,36,49,.13); --accent:#c2410c; --chip:rgba(28,36,49,.05); --chip-on:rgba(194,65,12,.1);
+    color-scheme:light;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:var(--sans);overflow:hidden;-webkit-font-smoothing:antialiased}
+  ::selection{background:var(--accent);color:var(--bg)}
+  *{scrollbar-color:var(--rule) transparent;scrollbar-width:thin}
+  #scene{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;outline:none}
+  #labels{position:fixed;inset:0;pointer-events:none}
+  button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button:active{transform:scale(.97)}
+
+  .loading{position:fixed;inset:0;display:grid;place-items:center;z-index:2;color:var(--muted);font-size:14px;pointer-events:none;text-align:center;padding:24px}
+  .loading.error{color:var(--ink)}
+
+  .bar{position:fixed;top:0;left:0;right:0;height:60px;display:flex;align-items:center;gap:14px;padding:0 20px;
+    border-bottom:1px solid var(--rule);background:var(--panel);z-index:5}
+  .brand{display:flex;align-items:center;gap:12px;min-width:0;margin-right:auto}
+  .mark{flex:none;width:34px;height:34px;border:1.5px solid var(--ink);display:grid;place-items:center;font:600 13px var(--mono);letter-spacing:.04em}
+  .brand strong{display:block;font-size:14px;font-weight:600;white-space:nowrap}
+  .brand small{display:block;font-size:12px;color:var(--muted);white-space:nowrap}
+  .seg{display:flex;border:1px solid var(--rule);border-radius:9px;padding:3px;gap:2px;flex:none}
+  .seg button{border:0;background:none;padding:7px 14px;border-radius:6px;font-size:13px;font-weight:500;color:var(--muted);
+    transition:background-color .16s ease,color .16s ease,transform .16s var(--ease-out)}
+  .seg button[aria-selected=true]{background:var(--chip-on);color:var(--ink)}
+  .products{display:grid;grid-template-columns:repeat(2,1fr);gap:2px;margin:0 0 16px;padding:3px;border:1px solid var(--rule);border-radius:9px}
+  .products a{flex:1;text-align:center;padding:7px 6px;border-radius:6px;font-size:13px;font-weight:500;color:var(--muted);text-decoration:none;
+    transition:background-color .16s ease,color .16s ease}
+  .products a[aria-current=page]{background:var(--chip-on);color:var(--ink)}
+  .products a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  @media (hover:hover) and (pointer:fine){ .products a:hover{color:var(--ink)} }  .ghost{border:1px solid var(--rule);background:none;border-radius:8px;padding:8px 12px;font-size:13px;font-weight:500;color:var(--muted);flex:none;
+    transition:color .16s ease,border-color .16s ease,transform .16s var(--ease-out)}
+
+  .panel{position:fixed;top:76px;left:16px;bottom:16px;width:312px;overflow:auto;background:var(--panel);border:1px solid var(--rule);
+    border-radius:12px;padding:18px;z-index:4}
+  .label{font-size:12.5px;font-weight:500;color:var(--muted);margin:0 0 8px}
+  .items{list-style:none;margin:0 0 18px;padding:0;display:grid;gap:2px}
+  .items button{width:100%;display:grid;grid-template-columns:30px 1fr;align-items:center;text-align:left;border:1px solid transparent;background:none;
+    padding:8px 10px;border-radius:7px;font-size:14px;transition:background-color .16s ease,border-color .16s ease,transform .16s var(--ease-out)}
+  .items button span{font:500 12px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+  .items button[aria-current=true]{background:var(--chip-on);border-color:var(--accent)}
+  @media (hover:hover) and (pointer:fine){
+    .ghost:hover{color:var(--ink);border-color:var(--muted)}
+    .items button:hover{background:var(--chip)}
+    .items button[aria-current=true]:hover{background:var(--chip-on)}
+    .chips button:hover{border-color:var(--muted)}
+    .chips button[aria-pressed=true]:hover{border-color:var(--accent)}
+    .seg button:hover{color:var(--ink)}
+  }
+  .info{border-top:1px solid var(--rule);padding-top:16px}
+  .info h2{font-size:19px;font-weight:600;margin:0 0 8px;letter-spacing:-.01em}
+  .info p{font-size:14px;line-height:1.55;color:var(--muted);margin:0 0 14px;text-wrap:pretty}
+  dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:13px}
+  dt{color:var(--muted)} dd{margin:0;font-family:var(--mono);font-size:12.5px;text-align:right}
+  .field{margin-top:18px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chips button{border:1px solid var(--rule);background:var(--chip);border-radius:7px;padding:8px 11px;font-size:13px;font-weight:500;
+    font-variant-numeric:tabular-nums;min-height:36px;min-width:44px;
+    transition:background-color .16s ease,border-color .16s ease,transform .16s var(--ease-out)}
+  .chips button[aria-pressed=true]{background:var(--chip-on);border-color:var(--accent)}
+  .check{display:flex;align-items:center;gap:8px;font-size:13px;margin-top:16px;color:var(--muted)}
+  .check input{accent-color:var(--accent);width:16px;height:16px}
+  .steps{margin:20px 0 0;padding:16px 0 0 18px;border-top:1px solid var(--rule);font-size:13px;line-height:1.5;color:var(--muted);display:grid;gap:6px}
+  .steps li::marker{font-weight:600;color:var(--muted)}
+  .steps li{transition:color .2s ease}
+  .steps li.on{color:var(--ink)}
+  .steps li.on::marker{color:var(--accent)}
+
+  .hud{position:fixed;right:16px;bottom:16px;width:310px;background:var(--panel);border:1px solid var(--rule);border-radius:12px;padding:14px 16px;z-index:4}
+  .hud .read{display:flex;align-items:baseline;justify-content:flex-end;gap:8px;background:#071423;border-radius:8px;padding:10px 14px;margin:6px 0 10px}
+  .hud .val{font:600 40px/1 var(--mono);color:#ffc857;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+  .hud .unit{font:500 14px var(--mono);color:#ffc857;opacity:.75}
+  .lamps{display:flex;gap:14px;font-size:12px;font-weight:500;color:var(--muted)}
+  .lamps span{display:flex;align-items:center;gap:6px}
+  .lamps i{width:8px;height:8px;border-radius:50%;border:1px solid var(--muted);transition:background-color .2s ease,border-color .2s ease}
+  .lamps .on i{background:var(--accent);border-color:var(--accent)}
+  .lamps .on{color:var(--ink)}
+  .msg{font-size:13px;margin:10px 0 0;min-height:1.5em}
+
+  .cartouche{position:fixed;right:16px;bottom:16px;z-index:3;border:1px solid var(--ink);font:500 11px var(--mono);display:grid;grid-template-columns:auto auto;background:var(--bg);opacity:.92}
+  .cartouche div{padding:6px 10px;border-right:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+  .cartouche div:nth-child(2n){border-right:0}
+  .cartouche b{display:block;font-weight:500;font-size:9.5px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin-bottom:2px}
+  .cartouche .wide{grid-column:1/-1;border-right:0;border-bottom:0;color:var(--muted)}
+
+  .dim-label{font:500 11px var(--mono);color:var(--dim);background:var(--bg);padding:1px 5px;white-space:nowrap}
+  .tag{width:0;height:0;position:relative}
+  .tag i{position:absolute;left:-3px;top:-3px;width:6px;height:6px;border-radius:50%;background:var(--accent)}
+  .tag span{position:absolute;left:9px;top:-11px;white-space:nowrap;font:500 11.5px var(--sans);color:var(--ink);background:var(--bg);padding:1px 6px;border:1px solid var(--rule);border-radius:4px}
+  .tag.big span{font-size:12.5px;font-weight:600}
+
+  @media (max-width:760px){
+    .bar{height:56px;padding:0 12px;gap:8px}
+    .brand > div,.mark{display:none}
+    .seg button{padding:7px 8px}
+    .seg button{padding:7px 9px;font-size:12px}
+    .ghost{padding:7px 9px}
+    .panel{top:auto;left:0;right:0;bottom:0;width:auto;max-height:42vh;border-radius:14px 14px 0 0;padding:14px 16px}
+    .items{grid-template-columns:repeat(2,1fr)}
+    .items button{font-size:13px;padding:8px}
+    .hud{top:66px;bottom:auto;right:10px;width:auto;padding:8px 10px}
+    .hud .label,.hud .lamps{display:none}
+    .hud .read{margin:0;padding:6px 10px}
+    .hud .val{font-size:24px}
+    .msg{font-size:11.5px;margin-top:6px;max-width:200px}
+    .cartouche{display:none}
+  }
+  @media (prefers-reduced-motion:reduce){button:active{transform:none}}
+</style>
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+</head>
+<body>
+<canvas id="scene" aria-label="Modelo 3D interactivo. Arrastra para girar, rueda o pellizco para acercar."></canvas>
+<div id="labels"></div>
+<div class="loading" id="loading" role="status">Cargando modelos 3D…</div>
+
+<header class="bar">
+  <div class="brand">
+    <div class="mark">JB</div>
+    <div><strong>Comercializadora JB</strong><small>Básculas camioneras · modelos técnicos</small></div>
+  </div>
+  <nav class="seg" role="tablist" aria-label="Vista">
+    <button role="tab" data-mode="catalogo" aria-selected="true">Componentes</button>
+    <button role="tab" data-mode="conjunto" aria-selected="false">Conjunto animado</button>
+  </nav>
+  <button id="themeBtn" class="ghost" type="button">Papel</button>
+</header>
+
+<aside class="panel">
+  <nav class="products" aria-label="Productos"><a href="index.html" aria-current="page">Camioneras</a><a href="ganaderas.html">Ganaderas</a><a href="silos.html">Silos</a><a href="contenedores.html">Contenedores</a></nav>
+  <section id="catPanel">
+    <ol class="items" id="items"></ol>
+    <div class="info">
+      <h2 id="infoTitle"></h2>
+      <p id="infoText"></p>
+      <dl id="infoSpecs"></dl>
+      <div class="field" id="capCatRow">
+        <p class="label">Capacidad</p>
+        <div class="chips" id="capCat"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="asmPanel" hidden>
+    <p class="label">Tipo de plataforma</p>
+    <div class="chips" id="typeChips">
+      <button data-type="fosa" aria-pressed="false">Fosa</button>
+      <button data-type="piso" aria-pressed="true">Piso</button>
+    </div>
+    <div class="field">
+      <p class="label">Capacidad</p>
+      <div class="chips" id="capAsm"></div>
+    </div>
+    <div class="field">
+      <p class="label">Animación</p>
+      <div class="chips">
+        <button id="playBtn" aria-pressed="true">Pausar</button>
+        <button id="restartBtn">Reiniciar</button>
+      </div>
+    </div>
+    <div class="field">
+      <p class="label">Cámara</p>
+      <div class="chips" id="camChips">
+        <button data-cam="general" aria-pressed="true">General</button>
+        <button data-cam="seguir" aria-pressed="false">Seguir camión</button>
+        <button data-cam="celdas" aria-pressed="false">Celdas</button>
+        <button data-cam="caseta" aria-pressed="false">Caseta</button>
+      </div>
+    </div>
+    <label class="check"><input type="checkbox" id="labelsChk" checked> Mostrar nombres de componentes</label>
+    <ol class="steps" id="steps">
+      <li data-s="1">El camión sube a la plataforma.</li>
+      <li data-s="2">Las celdas de carga convierten el peso en una señal eléctrica.</li>
+      <li data-s="3">La caja suma reúne las señales y las manda al indicador.</li>
+      <li data-s="4">El indicador muestra el peso y, al estabilizarse, la laptop registra la boleta. El no break mantiene todo encendido.</li>
+    </ol>
+  </section>
+</aside>
+
+<div class="hud" id="hud" hidden aria-live="polite">
+  <p class="label">Indicador, peso bruto</p>
+  <div class="read"><span class="val" id="hudVal">0</span><span class="unit">kg</span></div>
+  <div class="lamps">
+    <span id="lEst"><i></i>Estable</span><span id="lCero"><i></i>Cero</span><span id="lMov"><i></i>Movimiento</span>
+  </div>
+  <p class="msg" id="hudMsg"></p>
+</div>
+
+<div class="cartouche" id="cartouche">
+  <div><b>Cliente</b>Comercializadora JB</div>
+  <div><b>Hoja</b><span id="cSheet">02 / 07</span></div>
+  <div><b>Plano</b><span id="cName">Plataforma de piso</span></div>
+  <div><b>Escala</b>Ilustrativa</div>
+  <div class="wide">Medidas aproximadas, solo para presentación</div>
+</div>
+
+<script>
+  setTimeout(function(){
+    if (window.__ready) return;
+    var el = document.getElementById('loading');
+    el.className = 'loading error';
+    el.textContent = 'No se pudo cargar el motor 3D. Revisa la conexión a internet y vuelve a abrir la página.';
+  }, 15000);
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
+import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
+import { Line2 } from 'three/addons/lines/Line2.js';
+import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
+import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const V = (x=0,y=0,z=0) => new THREE.Vector3(x,y,z);
+
+/* ---------- temas ---------- */
+const THEMES = {
+  plano:{bg:0x0d2c4f, fill:0x0f3157, ink:0xe8f1ff, thin:0xb9d0ee, dim:0x8db4e2, accent:0xffc857, hidden:0x7ea6d6,
+    gridMinor:0x15406b, gridMajor:0x245a8e, cable:0xa9c4e6,
+    scr:{bg:'#0b2340', fg:'#e8f1ff', muted:'#8db4e2', accent:'#ffc857', rule:'rgba(232,241,255,.16)'}},
+  papel:{bg:0xf3f0e8, fill:0xfbf9f4, ink:0x1c2431, thin:0x3d4a5c, dim:0x5d6c80, accent:0xc2410c, hidden:0x8a96a6,
+    gridMinor:0xe6dfd1, gridMajor:0xd3c9b5, cable:0x4b5a70,
+    scr:{bg:'#ffffff', fg:'#1c2431', muted:'#5d6c80', accent:'#c2410c', rule:'rgba(28,36,49,.12)'}}
+};
+let T = THEMES.plano;
+const LCD = '#ffc857';
+
+/* ---------- motor ---------- */
+const canvas = document.getElementById('scene');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const labelRenderer = new CSS2DRenderer({element: document.getElementById('labels')});
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x0d2c4f, 40, 120);
+const camera = new THREE.PerspectiveCamera(32, 1, 0.02, 600);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.autoRotateSpeed = 0.7;
+
+const lineMats = [];
+function LM(o){ const m = new LineMaterial(o); lineMats.push(m); return m; }
+const M = {
+  fill: new THREE.MeshBasicMaterial({side:THREE.DoubleSide, polygonOffset:true, polygonOffsetFactor:1, polygonOffsetUnits:1, fog:false}),
+  ink: LM({linewidth:1.5}),
+  thin: LM({linewidth:0.9}),
+  dim: LM({linewidth:0.9}),
+  accent: LM({linewidth:2.3}),
+  hidden: LM({linewidth:0.9, dashed:true, dashSize:0.22, gapSize:0.14}),
+  cable: LM({linewidth:1.3}),
+};
+const gridMinorMat = new THREE.LineBasicMaterial();
+const gridMajorMat = new THREE.LineBasicMaterial();
+const pulseMat = new THREE.MeshBasicMaterial({fog:false});
+
+/* ---------- utilidades de dibujo ---------- */
+function edgesOf(geo, th=20){ return new LineSegmentsGeometry().fromEdgesGeometry(new THREE.EdgesGeometry(geo, th)); }
+function solid(geo, o={}){
+  const g = new THREE.Group();
+  if (o.fill !== false){ const mesh = new THREE.Mesh(geo, M.fill); g.add(mesh); }
+  const ls = new LineSegments2(edgesOf(geo, o.th ?? 20), M[o.line || 'ink']);
+  if (ls.material.dashed) ls.computeLineDistances();
+  g.add(ls);
+  return g;
+}
+function place(o,x=0,y=0,z=0){ o.position.set(x,y,z); return o; }
+function B(w,h,d,x,y,z,o){ return place(solid(new THREE.BoxGeometry(w,h,d),o),x,y,z); }
+function C(r,h,x,y,z,o={},axis='y',seg=28){
+  const geo = new THREE.CylinderGeometry(o.r2 ?? r, r, h, seg);
+  if (axis==='x') geo.rotateZ(Math.PI/2);
+  if (axis==='z') geo.rotateX(Math.PI/2);
+  return place(solid(geo,o),x,y,z);
+}
+function segs(pts, mat='thin'){
+  const arr = []; pts.forEach(p => arr.push(p[0],p[1],p[2]));
+  const g = new LineSegmentsGeometry(); g.setPositions(arr);
+  const ls = new LineSegments2(g, M[mat]); if (M[mat].dashed) ls.computeLineDistances();
+  return ls;
+}
+function poly(pts, mat='cable'){
+  const arr = []; pts.forEach(p => arr.push(p.x,p.y,p.z));
+  const g = new LineGeometry(); g.setPositions(arr);
+  const l = new Line2(g, M[mat]); l.computeLineDistances(); return l;
+}
+function rectXZ(x0,z0,x1,z1,y){ return [[x0,y,z0],[x1,y,z0],[x1,y,z0],[x1,y,z1],[x1,y,z1],[x0,y,z1],[x0,y,z1],[x0,y,z0]]; }
+function rectXY(x0,y0,x1,y1,z){ return [[x0,y0,z],[x1,y0,z],[x1,y0,z],[x1,y1,z],[x1,y1,z],[x0,y1,z],[x0,y1,z],[x0,y0,z]]; }
+function tag(text, pos, big=false){
+  const el = document.createElement('div'); el.className = 'tag' + (big ? ' big' : '');
+  el.innerHTML = '<i></i><span></span>'; el.querySelector('span').textContent = text;
+  const o = new CSS2DObject(el); o.position.copy(pos); return o;
+}
+function dimension(a,b,off,text,tick){
+  const g = new THREE.Group();
+  const n = off.clone().normalize();
+  const a2 = a.clone().add(off), b2 = b.clone().add(off);
+  const over = n.clone().multiplyScalar(tick*0.9), gap = n.clone().multiplyScalar(tick*0.4);
+  const dir = b2.clone().sub(a2).normalize();
+  const t = dir.clone().add(n).normalize().multiplyScalar(tick*0.7);
+  const P = [a.clone().add(gap), a2.clone().add(over), b.clone().add(gap), b2.clone().add(over), a2, b2,
+             a2.clone().sub(t), a2.clone().add(t), b2.clone().sub(t), b2.clone().add(t)];
+  g.add(segs(P.map(v => [v.x,v.y,v.z]), 'dim'));
+  const el = document.createElement('div'); el.className = 'dim-label'; el.textContent = text;
+  const lab = new CSS2DObject(el);
+  lab.position.copy(a2.clone().add(b2).multiplyScalar(0.5));
+  g.add(lab);
+  return g;
+}
+function makeGrid(size, step, majorEvery=5){
+  const minor = [], major = []; const n = Math.round(size/step), h = size/2;
+  for (let i=0;i<=n;i++){
+    const p = -h + i*step; const arr = (i % majorEvery === 0) ? major : minor;
+    arr.push(-h,0,p, h,0,p, p,0,-h, p,0,h);
+  }
+  const g = new THREE.Group();
+  [[minor,gridMinorMat],[major,gridMajorMat]].forEach(([a,m]) => {
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(a,3));
+    g.add(new THREE.LineSegments(geo, m));
+  });
+  g.position.y = -0.002;
+  return g;
+}
+function makeScreen(w,h,pw,ph){
+  const c = document.createElement('canvas'); c.width = pw; c.height = ph;
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+  const mat = new THREE.MeshBasicMaterial({map:tex, fog:false, polygonOffset:true, polygonOffsetFactor:-1, polygonOffsetUnits:-4});
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w,h), mat); mesh.userData.own = true;
+  return {c, ctx:c.getContext('2d'), tex, mesh};
+}
+const fmt = v => Math.round(v).toLocaleString('es-MX');
+
+/* ---------- pantallas ---------- */
+function drawIndicator(s, val, f={}){
+  const {ctx, c} = s; const W = c.width, H = c.height;
+  ctx.fillStyle = '#071423'; ctx.fillRect(0,0,W,H);
+  ctx.textBaseline = 'middle';
+  ctx.font = '600 86px "IBM Plex Mono", monospace'; ctx.textAlign = 'right';
+  ctx.fillStyle = 'rgba(255,200,87,.07)'; ctx.fillText('888888', W-70, H/2+4);
+  ctx.fillStyle = LCD; ctx.fillText(String(Math.round(val)), W-70, H/2+4);
+  ctx.font = '500 26px "IBM Plex Mono", monospace'; ctx.textAlign = 'left';
+  ctx.globalAlpha = .8; ctx.fillText('kg', W-62, H/2+20); ctx.globalAlpha = 1;
+  const lamps = [['EST', f.stable], ['CERO', f.zero], ['MOV', f.moving]];
+  ctx.font = '500 17px "IBM Plex Mono", monospace';
+  lamps.forEach(([t,on],i) => {
+    const y = 28 + i*36;
+    ctx.beginPath(); ctx.arc(22,y,6,0,Math.PI*2);
+    ctx.fillStyle = on ? LCD : 'rgba(255,200,87,.15)'; ctx.fill();
+    ctx.fillStyle = on ? LCD : 'rgba(255,200,87,.3)'; ctx.fillText(t, 36, y+1);
+  });
+  s.tex.needsUpdate = true;
+}
+function drawLaptop(s, d){
+  const {ctx, c} = s; const W = c.width, H = c.height, S = T.scr;
+  ctx.fillStyle = S.bg; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle = S.rule; ctx.fillRect(0,46,W,1);
+  ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  ctx.fillStyle = S.fg; ctx.font = '600 20px "IBM Plex Sans", sans-serif'; ctx.fillText('Software de pesaje', 22, 24);
+  ctx.textAlign = 'right'; ctx.fillStyle = S.muted; ctx.font = '500 15px "IBM Plex Mono", monospace';
+  ctx.fillText('Báscula 1 · en línea', W-22, 24);
+  ctx.textAlign = 'left'; ctx.fillStyle = S.muted; ctx.font = '500 14px "IBM Plex Mono", monospace';
+  ctx.fillText('PESO ACTUAL', 22, 74);
+  ctx.fillStyle = S.fg; ctx.font = '600 58px "IBM Plex Mono", monospace';
+  ctx.fillText(fmt(d.value) + ' kg', 22, 122);
+  const chip = d.stable ? 'ESTABLE' : (d.moving ? 'EN MOVIMIENTO' : 'EN CERO');
+  ctx.font = '600 14px "IBM Plex Mono", monospace';
+  const cw = ctx.measureText(chip).width + 22;
+  ctx.fillStyle = d.stable ? S.accent : S.rule; ctx.fillRect(W-22-cw, 108, cw, 28);
+  ctx.fillStyle = d.stable ? S.bg : S.fg; ctx.textAlign = 'center'; ctx.fillText(chip, W-22-cw/2, 123);
+  ctx.textAlign = 'left'; ctx.fillStyle = S.muted; ctx.font = '500 14px "IBM Plex Mono", monospace';
+  ctx.fillText('BOLETAS DE HOY', 22, 178);
+  ctx.fillStyle = S.rule; ctx.fillRect(22,196,W-44,1);
+  const cols = [22, 170, 300];
+  ctx.fillText('Boleta', cols[0], 214); ctx.fillText('Hora', cols[1], 214);
+  ctx.textAlign = 'right'; ctx.fillText('Peso bruto', W-22, 214); ctx.textAlign = 'left';
+  if (!d.tickets.length){ ctx.fillStyle = S.muted; ctx.font = '400 15px "IBM Plex Sans", sans-serif'; ctx.fillText('Las boletas aparecen aquí al registrar cada pesada.', 22, 250); }
+  d.tickets.slice(0,4).forEach((t,i) => {
+    const y = 250 + i*34;
+    ctx.fillStyle = i === 0 && d.fresh ? S.accent : S.fg; ctx.font = '500 16px "IBM Plex Mono", monospace';
+    ctx.fillText('#' + String(t.n).padStart(4,'0'), cols[0], y); ctx.fillText(t.hora, cols[1], y);
+    ctx.textAlign = 'right'; ctx.fillText(fmt(t.peso) + ' kg', W-22, y); ctx.textAlign = 'left';
+    ctx.fillStyle = S.rule; ctx.fillRect(22, y+17, W-44, 1);
+  });
+  s.tex.needsUpdate = true;
+}
+function drawUPS(s){
+  const {ctx, c} = s; const W = c.width, H = c.height;
+  ctx.fillStyle = '#071423'; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle = LCD; ctx.lineWidth = 4; ctx.strokeRect(20,30,130,56); ctx.fillStyle = LCD; ctx.fillRect(150,46,10,24);
+  for (let i=0;i<4;i++) ctx.fillRect(30+i*30, 40, 22, 36);
+  ctx.font = '600 34px "IBM Plex Mono", monospace'; ctx.textBaseline = 'middle'; ctx.fillText('100%', 172, 60);
+  s.tex.needsUpdate = true;
+}
+
+/* ---------- componentes ---------- */
+function buildCell(){
+  const g = new THREE.Group();
+  g.add(B(0.18,0.025,0.18, 0,0.0125,0));
+  [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(([a,b]) => g.add(C(0.011,0.027, a*0.065,0.0125,b*0.065,{line:'thin'})));
+  g.add(C(0.05,0.12, 0,0.085,0));
+  g.add(C(0.054,0.008, 0,0.12,0,{line:'thin'}));
+  g.add(C(0.022,0.03, 0,0.16,0));
+  g.add(B(0.14,0.02,0.14, 0,0.185,0));
+  g.add(C(0.011,0.03, 0,0.07,0.064,{},'z'));
+  return g;
+}
+function buildJunctionBox(){
+  const g = new THREE.Group();
+  g.add(B(0.26,0.2,0.09, 0,0.1,0));
+  g.add(B(0.272,0.212,0.012, 0,0.1,0.051));
+  [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(([a,b]) => g.add(C(0.008,0.004, a*0.115,0.1+b*0.085,0.059,{line:'thin'},'z',16)));
+  g.add(B(0.11,0.045,0.002, 0,0.13,0.058,{line:'thin'}));
+  for (let i=0;i<11;i++) g.add(C(0.008,0.024, -0.11+i*0.022,-0.012,0,{line:'thin'},'y',16));
+  return g;
+}
+function buildIndicator(){
+  const g = new THREE.Group();
+  g.add(B(0.36,0.01,0.16, 0,0.005,0));
+  g.add(B(0.012,0.17,0.04, -0.176,0.09,0)); g.add(B(0.012,0.17,0.04, 0.176,0.09,0));
+  g.add(C(0.022,0.016, -0.19,0.15,0,{},'x')); g.add(C(0.022,0.016, 0.19,0.15,0,{},'x'));
+  const body = new THREE.Group(); body.position.set(0,0.15,0); body.rotation.x = -0.22; g.add(body);
+  body.add(B(0.33,0.19,0.11, 0,0,0));
+  body.add(B(0.25,0.068,0.006, 0,0.043,0.058));
+  const scr = makeScreen(0.228,0.057,512,128); scr.mesh.position.set(0,0.043,0.0612); body.add(scr.mesh);
+  for (let r=0;r<2;r++) for (let c=0;c<6;c++) body.add(B(0.03,0.018,0.006, -0.1+c*0.04,-0.03-r*0.03,0.058,{line:'thin'}));
+  drawIndicator(scr, 0, {zero:true, stable:true});
+  return {group:g, screen:scr};
+}
+function buildUPS(){
+  const g = new THREE.Group();
+  g.add(B(0.16,0.26,0.38, 0,0.14,0));
+  [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(([a,b]) => g.add(B(0.024,0.01,0.03, a*0.055,0.005,b*0.16,{line:'thin'})));
+  g.add(B(0.15,0.245,0.008, 0,0.14,0.194));
+  const scr = makeScreen(0.07,0.032,256,116); scr.mesh.position.set(0,0.21,0.1985); g.add(scr.mesh);
+  g.add(C(0.012,0.006, 0,0.16,0.2,{line:'thin'},'z',20));
+  for (let i=0;i<6;i++) g.add(B(0.1,0.005,0.003, 0,0.04+i*0.014,0.1985,{line:'thin'}));
+  drawUPS(scr);
+  return {group:g, screen:scr};
+}
+function buildLaptop(){
+  const g = new THREE.Group();
+  g.add(B(0.34,0.018,0.235, 0,0.009,0));
+  const keys = [];
+  const kx0 = -0.148, kz0 = -0.098, kw = 0.0205, kd = 0.0195, cols = 14, rows = 5;
+  for (let r=0;r<rows;r++) for (let c=0;c<cols;c++){
+    const x0 = kx0 + c*0.0212, z0 = kz0 + r*0.0215;
+    keys.push(...rectXZ(x0, z0, x0+kw-0.002, z0+kd-0.002, 0.0185));
+  }
+  g.add(segs(keys,'thin'));
+  g.add(segs(rectXZ(-0.05,0.025,0.05,0.09,0.0185),'thin'));
+  const lid = new THREE.Group(); lid.position.set(0,0.018,-0.1175); lid.rotation.x = -0.28; g.add(lid);
+  lid.add(B(0.34,0.225,0.008, 0,0.1125,0.004));
+  const scr = makeScreen(0.31,0.194,640,400); scr.mesh.position.set(0,0.115,0.0085); lid.add(scr.mesh);
+  drawLaptop(scr, {value:0, tickets:[], stable:false, moving:false});
+  return {group:g, screen:scr};
+}
+function buildDesk(z){
+  const g = new THREE.Group();
+  g.add(B(1.5,0.04,0.7, 0,0.73,z));
+  [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(([a,b]) => g.add(B(0.05,0.71,0.05, a*0.7,0.355,z+b*0.3,{line:'thin'})));
+  return g;
+}
+function iBeam(len, h=0.3, b=0.14, tf=0.016, tw=0.01){
+  const s = new THREE.Shape();
+  s.moveTo(-b/2,0); s.lineTo(b/2,0); s.lineTo(b/2,tf); s.lineTo(tw/2,tf); s.lineTo(tw/2,h-tf); s.lineTo(b/2,h-tf);
+  s.lineTo(b/2,h); s.lineTo(-b/2,h); s.lineTo(-b/2,h-tf); s.lineTo(-tw/2,h-tf); s.lineTo(-tw/2,tf); s.lineTo(-b/2,tf); s.closePath();
+  const geo = new THREE.ExtrudeGeometry(s, {depth:len, bevelEnabled:false});
+  geo.rotateY(Math.PI/2); geo.translate(-len/2,0,0);
+  return geo;
+}
+
+const CAPS = {40:{L:12,M:2}, 60:{L:15,M:3}, 80:{L:18,M:3}, 100:{L:21,M:4}, 120:{L:24,M:4}};
+function buildPlatform(type, cap){
+  const {L, M:mods} = CAPS[cap]; const W = 3, Lm = L/mods, R = 3.5;
+  const beamH = 0.3, deckT = 0.016, cellH = 0.195, piso = type === 'piso';
+  const padH = piso ? 0.06 : 0.3;
+  const floorY = piso ? 0 : -(padH + cellH + beamH + deckT);
+  const padTop = floorY + padH, beamBot = padTop + cellH, deckTop = beamBot + beamH + deckT;
+  const g = new THREE.Group();
+  for (let i=0;i<mods;i++){
+    const x0 = -L/2 + i*Lm, cx = x0 + Lm/2;
+    g.add(B(Lm-0.03, deckT, W, cx, deckTop-deckT/2, 0));
+    [-1.15, 0, 1.15].forEach(z => g.add(place(solid(iBeam(Lm-0.08), {line:'thin'}), cx, beamBot, z)));
+    [x0+0.075, x0+Lm-0.075].forEach(x => g.add(B(0.12, beamH, W-0.04, x, beamBot+beamH/2, 0, {line:'thin'})));
+    [-1,1].forEach(s => g.add(B(Lm-0.03, beamH+deckT, 0.012, cx, beamBot+(beamH+deckT)/2, s*(W/2-0.006))));
+    // placa antiderrapante: líneas diagonales discretas
+    const marks = []; const n = Math.floor(Lm/0.9);
+    for (let k=1;k<n;k++){ const x = x0 + k*Lm/n; marks.push([x-0.18,deckTop+0.001,-0.9],[x+0.18,deckTop+0.001,-0.6],[x-0.18,deckTop+0.001,0.6],[x+0.18,deckTop+0.001,0.9]); }
+    g.add(segs(marks,'thin'));
+  }
+  const cells = [], cellPos = [];
+  for (let k=0;k<=mods;k++){
+    const x = k===0 ? -L/2+0.35 : (k===mods ? L/2-0.35 : -L/2+k*Lm);
+    [-1.15, 1.15].forEach(z => {
+      g.add(B(0.5, padH, 0.5, x, floorY+padH/2, z, {line:'thin'}));
+      const c = buildCell(); c.position.set(x, padTop, z); g.add(c); cells.push(c);
+      cellPos.push(V(x, padTop+0.07, z+0.08));
+    });
+  }
+  if (piso){
+    [-1,1].forEach(s => {
+      const sh = new THREE.Shape(); sh.moveTo(0,0); sh.lineTo(R,0); sh.lineTo(0,deckTop); sh.closePath();
+      const geo = new THREE.ExtrudeGeometry(sh, {depth:W, bevelEnabled:false}); geo.translate(0,0,-W/2);
+      if (s<0) geo.scale(-1,1,1);
+      g.add(place(solid(geo), s*(L/2+0.02), 0, 0));
+    });
+    [-1,1].forEach(s => g.add(B(L, 0.1, 0.07, 0, deckTop+0.05, s*(W/2-0.035), {line:'thin'})));
+    g.add(segs(rectXZ(-L/2-0.1, -W/2-0.2, L/2+0.1, W/2+0.2, 0.001), 'hidden'));
+  } else {
+    g.add(B(L+0.3, -floorY, W+0.3, 0, floorY/2, 0, {fill:false, line:'hidden'}));
+    g.add(segs([...rectXZ(-L/2-0.25,-W/2-0.25,L/2+0.25,W/2+0.25,0.001), ...rectXZ(-L/2-0.15,-W/2-0.15,L/2+0.15,W/2+0.15,0.001)], 'ink'));
+  }
+  const heightAt = x => {
+    if (!piso) return 0;
+    const a = Math.abs(x);
+    if (a <= L/2+0.02) return deckTop;
+    if (a < L/2+0.02+R) return deckTop*(1-(a-L/2-0.02)/R);
+    return 0;
+  };
+  return {group:g, L, W, R: piso ? R : 0, H:deckTop, floorY, padTop, cells, cellPos, heightAt, piso, mods, Lm};
+}
+
+function buildTruck(kind){
+  const g = new THREE.Group(); const spin = [], axles = [];
+  function axle(x, dual, load){
+    const a = new THREE.Group(); a.position.set(x,0.5,0);
+    const zs = dual ? [-1.12,-0.84,0.84,1.12] : [-1.02,1.02];
+    zs.forEach(z => { a.add(C(0.5,0.26,0,0,z,{},'z',32)); a.add(C(0.24,0.27,0,0,z,{line:'thin'},'z',20)); });
+    const sp = []; [zs[0]-0.136, zs[zs.length-1]+0.136].forEach(z => sp.push([-0.24,0,z],[0.24,0,z],[0,-0.24,z],[0,0.24,z]));
+    a.add(segs(sp,'thin'));
+    g.add(a); spin.push(a); axles.push({x, load});
+  }
+  const side = [];
+  if (kind === 'full'){
+    g.add(B(1.5,1.2,2.0, 8.35,1.5,0));
+    g.add(B(0.25,0.5,2.4, 9.15,0.75,0));
+    g.add(B(2.0,2.3,2.4, 6.6,2.05,0));
+    g.add(B(1.2,2.4,2.4, 5.0,2.1,0));
+    g.add(B(7.6,0.25,1.0, 5.3,0.9,0,{line:'thin'}));
+    [-1,1].forEach(s => { g.add(C(0.3,1.2, 6.2,0.72,s*1.0,{},'x')); g.add(C(0.07,2.4, 5.5,2.7,s*1.25,{line:'thin'})); });
+    g.add(B(1.0,0.12,1.2, 3.0,1.1,0,{line:'thin'}));
+    g.add(B(13.2,2.85,2.5, -2.6,2.675,0));
+    [-1,1].forEach(s => g.add(B(0.12,0.95,0.12, 0.6,0.75,s*0.9,{line:'thin'})));
+    g.add(B(4,0.25,1.0, -7.4,1.1,0,{line:'thin'}));
+    [-1,1].forEach(s => { side.push(...rectXY(6.0,2.15,7.3,2.95,s*1.201)); for (let x=-8.0;x<4;x+=1.2) side.push([x,1.3,s*1.251],[x,4.05,s*1.251]); });
+    side.push([-9.201,1.35,0],[-9.201,4.0,0]);
+    axle(8.3,false,6400); axle(3.6,true,8900); axle(2.3,true,8900); axle(-7.0,true,8590); axle(-8.3,true,8590);
+  } else {
+    g.add(B(1.5,1.2,2.0, 4.15,1.5,0));
+    g.add(B(0.25,0.5,2.4, 4.95,0.75,0));
+    g.add(B(1.8,2.2,2.4, 2.5,2.0,0));
+    g.add(B(9.8,0.25,1.0, -0.05,0.9,0,{line:'thin'}));
+    g.add(B(6.4,2.6,2.5, -1.8,2.5,0));
+    g.add(C(0.28,1.0, 0.9,0.72,1.0,{},'x'));
+    [-1,1].forEach(s => { side.push(...rectXY(2.0,2.1,3.2,2.9,s*1.201)); for (let x=-4.4;x<1.4;x+=1.2) side.push([x,1.25,s*1.251],[x,3.75,s*1.251]); });
+    side.push([-5.001,1.25,0],[-5.001,3.75,0]);
+    axle(4.1,false,6200); axle(-2.6,true,8220); axle(-3.9,true,8220);
+  }
+  g.add(segs(side,'thin'));
+  const len = kind === 'full' ? 18.4 : 10.1;
+  const f = axles[0].x, r = axles[axles.length-1].x;
+  return {group:g, spin, axles, len, kind,
+    update(x, dx, hAt){
+      const yF = hAt(x+f), yR = hAt(x+r);
+      g.position.set(x, yR + (yF-yR)*(0-r)/(f-r), 0);
+      g.rotation.z = Math.atan2(yF-yR, f-r);
+      spin.forEach(a => a.rotation.z -= dx/0.5);
+    }};
+}
+
+/* ---------- catálogo ---------- */
+const ITEMS = [
+  {id:'fosa', name:'Plataforma de fosa', text:'Se instala dentro de una fosa de concreto, con la cubierta al nivel del piso. No necesita rampas y el camión entra en línea recta por cualquiera de los dos extremos.'},
+  {id:'piso', name:'Plataforma de piso', text:'Se monta sobre una cimentación al nivel del suelo, con rampas de acceso en ambos extremos. Su instalación es más rápida y deja las celdas a la vista para revisarlas.'},
+  {id:'celda', name:'Celda de carga', text:'Sensor de acero que convierte el peso en una señal eléctrica. Va una en cada apoyo de la plataforma, por eso el número de celdas crece con el largo.',
+    specs:[['Tipo','Compresión, columna'],['Por báscula','6 a 10, según el largo'],['Salida','Señal hacia la caja suma']],
+    tags:[['Placa de apoyo',V(0,0.195,0)],['Cuerpo del sensor',V(-0.05,0.09,0)],['Salida de cable',V(0,0.07,0.08)]]},
+  {id:'caja', name:'Caja suma', text:'Reúne los cables de todas las celdas, iguala sus señales y las manda al indicador por un solo cable.',
+    specs:[['Entradas','Una por celda'],['Salida','Un cable al indicador'],['Montaje','Junto a la plataforma']],
+    tags:[['Tapa sellada',V(0.136,0.2,0.057)],['Entradas de cable',V(-0.11,-0.024,0)]]},
+  {id:'indicador', name:'Indicador camionero', text:'Muestra el peso en tiempo real, avisa cuando la lectura está estable y manda cada pesada a la computadora.',
+    specs:[['Pantalla','Dígitos de alto contraste'],['Avisos','Estable, cero y movimiento'],['Conexión','Caja suma y laptop']],
+    tags:[['Pantalla de peso',V(0.11,0.205,0.045)],['Teclado de funciones',V(0.1,0.12,0.075)],['Soporte de mesa',V(0.18,0.01,0.08)]]},
+  {id:'ups', name:'No break (UPS)', text:'Mantiene encendidos el indicador y la laptop durante un apagón o una variación de voltaje, para no perder la pesada en curso.',
+    specs:[['Protege','Indicador y laptop'],['Ubicación','Caseta de pesaje']],
+    tags:[['Estado de batería',V(0.035,0.225,0.2)],['Encendido',V(0,0.16,0.205)],['Ventilación',V(0.05,0.05,0.2)]]},
+  {id:'laptop', name:'Laptop con software', text:'Registra cada pesada, genera la boleta y guarda el historial de entradas y salidas.',
+    specs:[['Recibe','Peso desde el indicador'],['Genera','Boletas e historial']],
+    tags:[['Software de pesaje',V(0.155,0.22,-0.06)],['Teclado',V(0.15,0.019,-0.04)]]},
+];
+
+const state = {mode:'catalogo', item:'piso', cap:80, type:'piso', theme:'plano', labels:true, cam:'general'};
+let root = null, asm = null, screens = [], firstFit = true;
+
+function disposeTree(o){
+  o.traverse(c => {
+    if (c.isCSS2DObject && c.element.parentNode) c.element.remove();
+    if (c.geometry) c.geometry.dispose();
+    if (c.userData.own){ c.material.map && c.material.map.dispose(); c.material.dispose(); }
+  });
+}
+function setRoot(g){
+  if (root){ scene.remove(root); disposeTree(root); }
+  root = g; scene.add(g);
+}
+
+function buildCatalogItem(id){
+  const g = new THREE.Group(); let gridStep = 1, info = {}, fit = null;
+  screens = [];
+  if (id === 'fosa' || id === 'piso'){
+    const P = buildPlatform(id, state.cap); g.add(P.group); fit = P.group;
+    const {L, W, H} = P, tk = 0.35;
+    g.add(dimension(V(-L/2,H,-W/2), V(L/2,H,-W/2), V(0,0,-1.5), `${L.toFixed(2)} m`, tk));
+    const xw = L/2 + (P.piso ? P.R : 0.25);
+    g.add(dimension(V(xw,0,-W/2), V(xw,0,W/2), V(1.3,0,0), `${W.toFixed(2)} m`, tk));
+    if (P.piso){
+      g.add(dimension(V(L/2,0,W/2), V(L/2,H,W/2), V(0,0,1.2), `${H.toFixed(2)} m`, 0.15));
+      g.add(dimension(V(-L/2-P.R,0,W/2), V(-L/2,0,W/2), V(0,0,2.2), `Rampa ${P.R.toFixed(2)} m`, tk));
+      g.add(tag('Rampa de acceso', V(L/2+P.R*0.45, H*0.6, 0), true));
+    } else {
+      g.add(dimension(V(L/2+0.15,P.floorY,W/2+0.15), V(L/2+0.15,0,W/2+0.15), V(0,0,1.2), `Fosa ${(-P.floorY).toFixed(2)} m`, 0.15));
+      g.add(tag('Fosa de concreto', V(L/2+0.15, P.floorY*0.5, -W/2-0.15), true));
+    }
+    g.add(tag(`${P.cells.length} celdas de carga`, P.cellPos[3].clone().add(V(0,0.05,0.1)), true));
+    g.add(tag('Módulo de acero', V(-L/2+P.Lm*0.5, H, 0), true));
+    g.add(makeGrid(Math.ceil((L+2*P.R)*1.8/10)*10, 1));
+    info = {specs:[['Capacidad',`${state.cap} t`],['Largo',`${L.toFixed(2)} m`],['Ancho',`${W.toFixed(2)} m`],['Módulos',String(P.mods)],['Celdas',String(P.cells.length)]]};
+  } else {
+    const it = ITEMS.find(i => i.id === id);
+    let model;
+    if (id === 'celda') model = buildCell();
+    if (id === 'caja') model = buildJunctionBox();
+    if (id === 'indicador'){ const o = buildIndicator(); model = o.group; screens.push(() => drawIndicator(o.screen, 0, {zero:true, stable:true})); }
+    if (id === 'ups'){ const o = buildUPS(); model = o.group; screens.push(() => drawUPS(o.screen)); }
+    if (id === 'laptop'){ const o = buildLaptop(); model = o.group; screens.push(() => drawLaptop(o.screen, {value:0, tickets:[], stable:false, moving:false})); }
+    g.add(model); fit = model;
+    (it.tags || []).forEach(([t,p]) => model.add(tag(t,p)));
+    const box = new THREE.Box3().setFromObject(model);
+    const sz = box.getSize(V()); const mx = Math.max(sz.x,sz.y,sz.z);
+    const k = mx*0.22, tk = mx*0.035, mm = v => `${Math.round(v*1000/5)*5} mm`;
+    const {min, max} = box;
+    g.add(dimension(V(min.x,min.y,max.z), V(max.x,min.y,max.z), V(0,0,k), mm(sz.x), tk));
+    g.add(dimension(V(min.x,min.y,max.z), V(min.x,max.y,max.z), V(-k*0.8,0,k*0.4), mm(sz.y), tk));
+    g.add(dimension(V(max.x,min.y,min.z), V(max.x,min.y,max.z), V(k,0,0), mm(sz.z), tk));
+    g.position.y = -min.y;
+    gridStep = mx < 0.25 ? 0.02 : 0.05;
+    const grid = makeGrid(Math.ceil(mx*5/gridStep/5)*gridStep*5, gridStep); grid.position.y = min.y - 0.002; g.add(grid);
+    info = {specs: it.specs};
+  }
+  return {group:g, info, fit};
+}
+
+function showCatalog(){
+  const {group, info, fit} = buildCatalogItem(state.item);
+  setRoot(group);
+  const it = ITEMS.find(i => i.id === state.item);
+  const idx = ITEMS.indexOf(it);
+  document.getElementById('infoTitle').textContent = it.name;
+  document.getElementById('infoText').textContent = it.text;
+  const dl = document.getElementById('infoSpecs'); dl.innerHTML = '';
+  info.specs.forEach(([a,b]) => { const dt = document.createElement('dt'); dt.textContent = a; const dd = document.createElement('dd'); dd.textContent = b; dl.append(dt,dd); });
+  document.getElementById('capCatRow').hidden = !(state.item === 'fosa' || state.item === 'piso');
+  document.getElementById('cName').textContent = it.name;
+  document.getElementById('cSheet').textContent = `${String(idx+1).padStart(2,'0')} / ${String(ITEMS.length).padStart(2,'0')}`;
+  document.querySelectorAll('#items button').forEach(b => b.setAttribute('aria-current', b.dataset.id === state.item));
+  controls.maxPolarAngle = Math.PI*0.92;
+  controls.autoRotate = !REDUCED;
+  group.updateMatrixWorld(true);
+  fitTo(fit, (state.item === 'fosa' || state.item === 'piso') ? 0.8 : 1.55);
+}
+
+/* ---------- conjunto ---------- */
+function buildAssembly(){
+  const g = new THREE.Group();
+  const P = buildPlatform(state.type, state.cap); g.add(P.group);
+  const {L, W, H} = P;
+  const zBox = W/2 + 0.9, deskZ = 6.8;
+  g.add(B(0.07,0.86,0.07, 0,0.43,zBox-0.08,{line:'thin'}));
+  const jb = buildJunctionBox(); jb.position.set(0,0.88,zBox); g.add(jb);
+  g.add(buildDesk(deskZ));
+  const ind = buildIndicator(); ind.group.position.set(-0.35,0.75,deskZ-0.05); g.add(ind.group);
+  const lap = buildLaptop(); lap.group.position.set(0.35,0.75,deskZ); g.add(lap.group);
+  const ups = buildUPS(); ups.group.position.set(1.05,0,deskZ-0.1); g.add(ups.group);
+  g.add(B(3.4,2.6,2.6, 0,1.3,deskZ+0.2,{fill:false, line:'hidden'}));
+
+  // cables y señales
+  const paths = [];
+  const mkPath = pts => { const cum=[0]; for (let i=1;i<pts.length;i++) cum.push(cum[i-1]+pts[i].distanceTo(pts[i-1])); return {pts, cum, total:cum[cum.length-1]}; };
+  const yr = P.piso ? 0.03 : P.floorY + 0.03;
+  P.cellPos.forEach((c,i) => {
+    const bx = -0.11 + (i%10)*0.022, zr = W/2 + 0.22 + (i%4)*0.03, xo = c.x + (c.x > 0 ? -0.35 : 0.35);
+    const pts = [c.clone(), V(c.x,yr,c.z), V(xo,yr,c.z), V(xo,yr,zr), V(bx,yr,zr), V(bx,yr,zBox), V(bx,0.86,zBox)];
+    g.add(poly(pts)); paths.push({...mkPath(pts), speed:5, r:0.03});
+  });
+  const main = [V(0.11,0.86,zBox), V(0.11,0.03,zBox+0.05), V(0.11,0.03,deskZ-0.5), V(-0.35,0.03,deskZ-0.5), V(-0.35,0.03,deskZ-0.37), V(-0.35,0.77,deskZ-0.37), V(-0.35,0.77,deskZ-0.13)];
+  g.add(poly(main)); paths.push({...mkPath(main), speed:2.2, r:0.02});
+  const data = [V(-0.17,0.765,deskZ-0.12), V(0.2,0.765,deskZ-0.12), V(0.2,0.765,deskZ-0.1)];
+  g.add(poly(data)); paths.push({...mkPath(data), speed:0.6, r:0.007});
+  g.add(poly([V(1.05,0.15,deskZ-0.29), V(1.05,0.03,deskZ-0.45), V(-0.55,0.03,deskZ-0.45), V(-0.55,0.03,deskZ-0.37), V(-0.55,0.77,deskZ-0.37), V(-0.5,0.77,deskZ-0.13)], 'thin'));
+
+  const pulses = [];
+  paths.forEach(p => {
+    for (let k=0;k<2;k++){
+      const m = new THREE.Mesh(new THREE.SphereGeometry(p.r, 10, 8), pulseMat);
+      m.visible = false; g.add(m); pulses.push({mesh:m, path:p, off:k*p.total/2});
+    }
+  });
+
+  const cellLines = [];
+  P.cells.forEach(c => c.traverse(o => { if (o.isLineSegments2 && o.material === M.ink) cellLines.push(o); }));
+
+  const truck = buildTruck(L >= 18 ? 'full' : 'torton'); g.add(truck.group);
+  const xs = -(L/2 + P.R + 14 + truck.len/2), xe = -xs;
+
+  const far = new THREE.Group(), near = new THREE.Group(), always = new THREE.Group();
+  always.add(tag('Plataforma', V(-L/4, H+0.4, -W/2), true));
+  always.add(tag('Celdas de carga', P.cellPos[0].clone().add(V(0,0.12,-0.1)), true));
+  always.add(tag('Caja suma', V(0.14,1.08,zBox), true));
+  far.add(tag('Caseta: indicador, laptop y no break', V(0,2.7,deskZ), true));
+  near.add(tag('Indicador', V(-0.35,1.08,deskZ), true));
+  near.add(tag('Laptop', V(0.5,1.0,deskZ-0.15), true));
+  near.add(tag('No break', V(1.13,0.42,deskZ), true));
+  [far, near, always].forEach(x => g.add(x));
+  g.add(dimension(V(-L/2,H,-W/2), V(L/2,H,-W/2), V(0,0,-1.6), `${L.toFixed(2)} m · ${state.cap} t`, 0.35));
+  g.add(makeGrid(Math.ceil((L+2*P.R+60)/10)*10, 1));
+
+  screens = [];
+  asm = {group:g, P, ind, lap, ups, paths, pulses, cellLines, truck, xs, xe, deskZ, far, near, always,
+         t:0, phase:'in', phaseT:0, x:xs, raw:0, disp:0, shown:-1, stableT:0, recorded:false, tickets:[], fresh:false,
+         lastDraw:0, lastKey:'', ticketNo:0};
+  screens.push(() => { drawUPS(ups.screen); asm.lastKey = ''; });
+  truck.update(xs, 0, P.heightAt);
+  return g;
+}
+
+function showAssembly(resetCam=true){
+  const prevTickets = asm ? asm.tickets : [], prevNo = asm ? asm.ticketNo : 0;
+  setRoot(buildAssembly());
+  asm.tickets = prevTickets; asm.ticketNo = prevNo;
+  controls.autoRotate = false;
+  controls.maxPolarAngle = Math.PI*0.49;
+  applyLabels();
+  if (resetCam) setCam(state.cam, firstFit ? 0 : 1.1);
+  firstFit = false;
+}
+
+function camPreset(name){
+  const {L, W, piso, floorY} = asm.P;
+  if (name === 'caseta') return [V(1.55,1.75,asm.deskZ+2.5), V(0,0.82,asm.deskZ)];
+  if (name === 'celdas'){ const t = V(-L/2+asm.P.Lm, asm.P.padTop+0.12, 1.15); return [t.clone().add(V(-1.5, piso?0.3:0.75, 2.3)), t]; }
+  if (name === 'seguir'){ const t = V(asm.x,1.6,0); return [t.clone().add(V(-9,6,13)), t]; }
+  const R = L/2 + asm.P.R + 1.5;
+  const vf = THREE.MathUtils.degToRad(camera.fov/2), hf = Math.atan(Math.tan(vf)*(panelOff.v||1)*panelOff.aspect);
+  const d = R/Math.sin(Math.min(Math.atan(Math.tan(vf)*(panelOff.v||1)),hf))*0.85;
+  const t = V(0,0.5,2.2);
+  return [t.clone().add(V(-0.45,0.48,0.75).normalize().multiplyScalar(d)), t];
+}
+function setCam(name, dur=1.1){
+  state.cam = name;
+  document.querySelectorAll('#camChips button').forEach(b => b.setAttribute('aria-pressed', b.dataset.cam === name));
+  const [p,t] = camPreset(name);
+  camera.near = 0.02; camera.far = 600; camera.updateProjectionMatrix();
+  scene.fog.near = 60; scene.fog.far = 150;
+  flyTo(p, t, dur);
+}
+
+const easeOut = k => 1 - Math.pow(1-k, 2);
+const easeIn = k => k*k;
+const ease = k => k<.5 ? 4*k*k*k : 1 - Math.pow(-2*k+2,3)/2;
+const DUR = {in:9, weigh:7, out:7.5, gap:2.2};
+let playing = !REDUCED;
+
+function pointAt(p, d){
+  d = ((d % p.total) + p.total) % p.total;
+  let i = 1; while (i < p.cum.length-1 && p.cum[i] < d) i++;
+  const k = (d - p.cum[i-1]) / Math.max(1e-6, p.cum[i]-p.cum[i-1]);
+  return p.pts[i-1].clone().lerp(p.pts[i], k);
+}
+
+function setPhase(p){ asm.phase = p; asm.phaseT = 0; }
+function stepAnim(dt){
+  const A = asm; if (!A) return;
+  if (playing){
+    A.t += dt; A.phaseT += dt;
+    let x = A.x;
+    if (A.phase === 'in'){ const k = Math.min(1, A.phaseT/DUR.in); x = A.xs + (0 - A.xs)*easeOut(k); if (k >= 1) setPhase('weigh'); }
+    else if (A.phase === 'weigh'){ x = 0; if (A.phaseT > DUR.weigh) setPhase('out'); }
+    else if (A.phase === 'out'){ const k = Math.min(1, A.phaseT/DUR.out); x = A.xe*easeIn(k); if (k >= 1) setPhase('gap'); }
+    else if (A.phase === 'gap'){ x = A.xe; if (A.phaseT > DUR.gap){ setPhase('in'); x = A.xs; A.recorded = false; A.fresh = false; } }
+    const dx = (A.phase === 'in' && A.phaseT === 0) ? 0 : x - A.x;
+    A.x = x; A.truck.group.visible = A.phase !== 'gap';
+    A.truck.update(x, Math.abs(dx) > 5 ? 0 : dx, A.P.heightAt);
+    const L = A.P.L, moving = Math.abs(dx) > 1e-4;
+    let target = 0; A.truck.axles.forEach(a => { if (Math.abs(x + a.x) <= L/2) target += a.load; });
+    let noise = 0;
+    if (target > 0){
+      if (moving) noise = target*0.012*Math.sin(A.t*11) + target*0.006*Math.sin(A.t*23.7);
+      else noise = target*0.01*Math.exp(-A.phaseT*1.6)*Math.sin(A.t*9);
+    }
+    A.raw = target + noise;
+    A.disp += (A.raw - A.disp)*(1 - Math.exp(-dt*5));
+    const shown = A.disp < 25 ? 0 : Math.round(A.disp/10)*10;
+    const settled = !moving && Math.abs(A.disp - target) < 6;
+    A.stableT = settled ? A.stableT + dt : 0;
+    A.stable = A.stableT > 0.6;
+    A.moving = !A.stable && shown > 0;
+    if (A.phase === 'weigh' && A.stable && !A.recorded && A.stableT > 1.4){
+      A.recorded = true; A.fresh = true; A.ticketNo++;
+      const d = new Date(); const hora = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+      A.tickets.unshift({n:A.ticketNo, hora, peso:target});
+      A.lastKey = '';
+    }
+    A.shown = shown;
+    const signal = shown > 0;
+    A.cellLines.forEach(l => l.material = signal ? M.accent : M.ink);
+    A.pulses.forEach(p => {
+      p.mesh.visible = signal;
+      if (signal) p.mesh.position.copy(pointAt(p.path, p.off + A.t*p.path.speed));
+    });
+  }
+  // pantallas y HUD
+  const key = `${A.shown}|${A.stable}|${A.moving}|${A.tickets.length}|${A.fresh}|${state.theme}`;
+  if (key !== A.lastKey && performance.now() - A.lastDraw > 90){
+    A.lastKey = key; A.lastDraw = performance.now();
+    drawIndicator(A.ind.screen, A.shown, {stable:A.stable && A.shown>0, zero:A.shown===0, moving:A.moving});
+    drawLaptop(A.lap.screen, {value:A.shown, tickets:A.tickets, stable:A.stable && A.shown>0, moving:A.moving, fresh:A.fresh});
+    hudVal.textContent = fmt(A.shown);
+    lEst.classList.toggle('on', A.stable && A.shown>0);
+    lCero.classList.toggle('on', A.shown === 0);
+    lMov.classList.toggle('on', A.moving);
+  }
+  let msg = '', step = 0;
+  if (A.phase === 'in'){ msg = A.shown > 0 ? 'Camión subiendo: el peso aumenta eje por eje.' : 'Camión acercándose a la báscula.'; step = A.shown > 0 ? 2 : 1; }
+  if (A.phase === 'weigh'){ msg = A.recorded ? `Pesada registrada en la boleta #${String(A.ticketNo).padStart(4,'0')}.` : 'Camión detenido, estabilizando la lectura.'; step = A.recorded ? 4 : 3; }
+  if (A.phase === 'out'){ msg = 'Camión saliendo de la báscula.'; step = 0; }
+  if (A.phase === 'gap'){ msg = 'Báscula en cero, lista para la siguiente pesada.'; step = 0; }
+  if (!playing) msg = 'Animación en pausa.';
+  if (hudMsg.textContent !== msg) hudMsg.textContent = msg;
+  document.querySelectorAll('#steps li').forEach(li => li.classList.toggle('on', +li.dataset.s <= step && step > 0));
+  // etiquetas cercanas/lejanas
+  const dCase = camera.position.distanceTo(V(0,1,A.deskZ));
+  const nearOn = state.labels && dCase < 7, farOn = state.labels && dCase >= 7;
+  A.near.children.forEach(c => c.visible = nearOn);
+  A.far.children.forEach(c => c.visible = farOn);
+  // seguir camión
+  if (state.cam === 'seguir' && !camTween){
+    const t = V(A.x, 1.6, 0); const delta = t.clone().sub(controls.target);
+    controls.target.add(delta); camera.position.add(delta);
+  }
+}
+const hudVal = document.getElementById('hudVal'), hudMsg = document.getElementById('hudMsg');
+const lEst = document.getElementById('lEst'), lCero = document.getElementById('lCero'), lMov = document.getElementById('lMov');
+
+function applyLabels(){
+  if (!asm) return;
+  asm.always.children.forEach(c => c.visible = state.labels);
+}
+
+/* ---------- cámara ---------- */
+let camTween = null;
+function flyTo(pos, target, dur=1){
+  if (dur <= 0 || REDUCED){ camera.position.copy(pos); controls.target.copy(target); camTween = null; controls.update(); return; }
+  camTween = {p0:camera.position.clone(), t0:controls.target.clone(), p1:pos, t1:target, k:0, dur, start:performance.now()};
+}
+function updateTween(){
+  if (!camTween) return;
+  camTween.k = Math.min(1, (performance.now() - camTween.start)/1000/camTween.dur);
+  const e = ease(camTween.k);
+  camera.position.lerpVectors(camTween.p0, camTween.p1, e);
+  controls.target.lerpVectors(camTween.t0, camTween.t1, e);
+  if (camTween.k >= 1) camTween = null;
+}
+controls.addEventListener('start', () => { camTween = null; if (state.mode === 'catalogo') controls.autoRotate = false; });
+let panelOff = {x:0, y:0, aspect:1};
+function fitTo(obj, factor=1){
+  const box = new THREE.Box3().setFromObject(obj);
+  const s = box.getBoundingSphere(new THREE.Sphere());
+  const vf = THREE.MathUtils.degToRad(camera.fov/2);
+  const hf = Math.atan(Math.tan(vf)*(panelOff.v||1)*panelOff.aspect);
+  const d = s.radius/Math.sin(Math.min(Math.atan(Math.tan(vf)*(panelOff.v||1)),hf))*factor;
+  const pos = s.center.clone().add(V(1.15,0.7,1.5).normalize().multiplyScalar(d));
+  camera.near = d/200; camera.far = d*30; camera.updateProjectionMatrix();
+  scene.fog.near = d*1.4; scene.fog.far = d*3.2;
+  flyTo(pos, s.center, firstFit ? 0 : 0.9);
+  firstFit = false;
+}
+
+/* ---------- tema ---------- */
+function applyTheme(name){
+  state.theme = name; T = THEMES[name];
+  document.documentElement.dataset.theme = name;
+  renderer.setClearColor(T.bg); scene.fog.color.setHex(T.bg);
+  M.fill.color.setHex(T.fill);
+  M.ink.color.setHex(T.ink); M.thin.color.setHex(T.thin); M.dim.color.setHex(T.dim);
+  M.accent.color.setHex(T.accent); M.hidden.color.setHex(T.hidden); M.cable.color.setHex(T.cable);
+  gridMinorMat.color.setHex(T.gridMinor); gridMajorMat.color.setHex(T.gridMajor);
+  pulseMat.color.setHex(T.accent);
+  document.getElementById('themeBtn').textContent = name === 'plano' ? 'Papel' : 'Plano azul';
+  screens.forEach(f => f());
+  if (asm) asm.lastKey = '';
+}
+
+/* ---------- interfaz ---------- */
+const itemsEl = document.getElementById('items');
+ITEMS.forEach((it,i) => {
+  const li = document.createElement('li'); const b = document.createElement('button');
+  b.dataset.id = it.id; b.innerHTML = `<span>${String(i+1).padStart(2,'0')}</span>`; b.append(it.name);
+  b.addEventListener('click', () => { state.item = it.id; showCatalog(); });
+  li.append(b); itemsEl.append(li);
+});
+function capChips(el, onPick){
+  Object.keys(CAPS).forEach(c => {
+    const b = document.createElement('button'); b.textContent = `${c} t`; b.dataset.cap = c;
+    b.addEventListener('click', () => { state.cap = +c; syncCaps(); onPick(); });
+    el.append(b);
+  });
+}
+function syncCaps(){ document.querySelectorAll('[data-cap]').forEach(b => b.setAttribute('aria-pressed', +b.dataset.cap === state.cap)); }
+capChips(document.getElementById('capCat'), () => showCatalog());
+capChips(document.getElementById('capAsm'), () => { asm = null; showAssembly(); });
+syncCaps();
+
+document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+function setMode(m){
+  state.mode = m;
+  document.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-selected', b.dataset.mode === m));
+  document.getElementById('catPanel').hidden = m !== 'catalogo';
+  document.getElementById('asmPanel').hidden = m !== 'conjunto';
+  document.getElementById('hud').hidden = m !== 'conjunto';
+  document.getElementById('cartouche').hidden = m !== 'catalogo';
+  firstFit = true;
+  resize();
+  if (m === 'catalogo'){ asm = null; showCatalog(); } else { showAssembly(); }
+}
+document.querySelectorAll('#typeChips button').forEach(b => b.addEventListener('click', () => {
+  state.type = b.dataset.type;
+  document.querySelectorAll('#typeChips button').forEach(x => x.setAttribute('aria-pressed', x === b));
+  asm = null; showAssembly();
+}));
+const playBtn = document.getElementById('playBtn');
+function syncPlay(){ playBtn.textContent = playing ? 'Pausar' : 'Reproducir'; playBtn.setAttribute('aria-pressed', playing); }
+playBtn.addEventListener('click', () => { playing = !playing; syncPlay(); });
+document.getElementById('restartBtn').addEventListener('click', () => { if (!asm) return; showAssembly(false); playing = true; syncPlay(); });
+document.querySelectorAll('#camChips button').forEach(b => b.addEventListener('click', () => setCam(b.dataset.cam)));
+document.getElementById('labelsChk').addEventListener('change', e => { state.labels = e.target.checked; applyLabels(); });
+document.getElementById('themeBtn').addEventListener('click', () => applyTheme(state.theme === 'plano' ? 'papel' : 'plano'));
+syncPlay();
+
+/* ---------- tamaño ---------- */
+function resize(){
+  const w = innerWidth, h = innerHeight;
+  if (w < 50 || h < 50) return;
+  renderer.setSize(w, h, false); labelRenderer.setSize(w, h);
+  lineMats.forEach(m => m.resolution.set(w, h));
+  camera.aspect = w/h;
+  const panel = document.querySelector('.panel').getBoundingClientRect();
+  const mobile = w <= 760;
+  const ox = mobile ? 0 : (panel.right)/2;
+  const oy = mobile ? -(panel.height)/2 + 28 : 30;
+  camera.setViewOffset(w, h, -ox, -oy, w, h);
+  panelOff = {aspect: Math.max(0.3, (mobile ? w/(h - panel.height - 56) : (w - panel.right)/(h - 60)) || 1), v: Math.min(1, Math.max(0.3, ((mobile ? h - panel.height - 56 : h - 60)/h) || 1))};
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
+
+/* ---------- arranque ---------- */
+applyTheme('plano');
+resize();
+showCatalog();
+document.fonts && document.fonts.ready.then(() => { screens.forEach(f => f()); if (asm) asm.lastKey = ''; });
+
+window.__ready = true;
+document.getElementById('loading').remove();
+const clock = new THREE.Clock();
+function frame(){
+  const dt = Math.min(clock.getDelta(), 0.05);
+  if (state.mode === 'conjunto') stepAnim(dt);
+  updateTween(dt);
+  controls.update();
+  renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+frame();
+</script>
+</body>
+</html>

@@ -1,0 +1,938 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Básculas ganaderas JB</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0d2c4f; --panel:#0a223e; --ink:#e8f1ff; --muted:#9dbbe0; --dim:#8db4e2;
+    --rule:rgba(232,241,255,.14); --accent:#ffc857; --chip:rgba(232,241,255,.06); --chip-on:rgba(255,200,87,.14);
+    --sans:'IBM Plex Sans',system-ui,sans-serif; --mono:'IBM Plex Mono',ui-monospace,monospace;
+    --ease-out:cubic-bezier(.23,1,.32,1);
+    color-scheme:dark;
+  }
+  :root[data-theme=papel]{
+    --bg:#f3f0e8; --panel:#fbf9f4; --ink:#1c2431; --muted:#56657a; --dim:#56657a;
+    --rule:rgba(28,36,49,.13); --accent:#c2410c; --chip:rgba(28,36,49,.05); --chip-on:rgba(194,65,12,.1);
+    color-scheme:light;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:var(--sans);overflow:hidden;-webkit-font-smoothing:antialiased}
+  ::selection{background:var(--accent);color:var(--bg)}
+  *{scrollbar-color:var(--rule) transparent;scrollbar-width:thin}
+  #scene{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;outline:none}
+  #labels{position:fixed;inset:0;pointer-events:none}
+  button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button:active{transform:scale(.97)}
+
+  .loading{position:fixed;inset:0;display:grid;place-items:center;z-index:2;color:var(--muted);font-size:14px;pointer-events:none;text-align:center;padding:24px}
+  .loading.error{color:var(--ink)}
+
+  .bar{position:fixed;top:0;left:0;right:0;height:60px;display:flex;align-items:center;gap:14px;padding:0 20px;
+    border-bottom:1px solid var(--rule);background:var(--panel);z-index:5}
+  .brand{display:flex;align-items:center;gap:12px;min-width:0;margin-right:auto}
+  .mark{flex:none;width:34px;height:34px;border:1.5px solid var(--ink);display:grid;place-items:center;font:600 13px var(--mono);letter-spacing:.04em}
+  .brand strong{display:block;font-size:14px;font-weight:600;white-space:nowrap}
+  .brand small{display:block;font-size:12px;color:var(--muted);white-space:nowrap}
+  .seg{display:flex;border:1px solid var(--rule);border-radius:9px;padding:3px;gap:2px;flex:none}
+  .seg button{border:0;background:none;padding:7px 14px;border-radius:6px;font-size:13px;font-weight:500;color:var(--muted);
+    transition:background-color .16s ease,color .16s ease,transform .16s var(--ease-out)}
+  .seg button[aria-selected=true]{background:var(--chip-on);color:var(--ink)}
+  .products{display:grid;grid-template-columns:repeat(2,1fr);gap:2px;margin:0 0 16px;padding:3px;border:1px solid var(--rule);border-radius:9px}
+  .products a{flex:1;text-align:center;padding:7px 6px;border-radius:6px;font-size:13px;font-weight:500;color:var(--muted);text-decoration:none;
+    transition:background-color .16s ease,color .16s ease}
+  .products a[aria-current=page]{background:var(--chip-on);color:var(--ink)}
+  .products a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  @media (hover:hover) and (pointer:fine){ .products a:hover{color:var(--ink)} }  .ghost{border:1px solid var(--rule);background:none;border-radius:8px;padding:8px 12px;font-size:13px;font-weight:500;color:var(--muted);flex:none;
+    transition:color .16s ease,border-color .16s ease,transform .16s var(--ease-out)}
+
+  .panel{position:fixed;top:76px;left:16px;bottom:16px;width:312px;overflow:auto;background:var(--panel);border:1px solid var(--rule);
+    border-radius:12px;padding:18px;z-index:4}
+  .label{font-size:12.5px;font-weight:500;color:var(--muted);margin:0 0 8px}
+  .items{list-style:none;margin:0 0 18px;padding:0;display:grid;gap:2px}
+  .items button{width:100%;display:grid;grid-template-columns:30px 1fr;align-items:center;text-align:left;border:1px solid transparent;background:none;
+    padding:8px 10px;border-radius:7px;font-size:14px;transition:background-color .16s ease,border-color .16s ease,transform .16s var(--ease-out)}
+  .items button span{font:500 12px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+  .items button[aria-current=true]{background:var(--chip-on);border-color:var(--accent)}
+  @media (hover:hover) and (pointer:fine){
+    .ghost:hover{color:var(--ink);border-color:var(--muted)}
+    .items button:hover{background:var(--chip)}
+    .items button[aria-current=true]:hover{background:var(--chip-on)}
+    .chips button:hover{border-color:var(--muted)}
+    .chips button[aria-pressed=true]:hover{border-color:var(--accent)}
+    .seg button:hover{color:var(--ink)}
+  }
+  .info{border-top:1px solid var(--rule);padding-top:16px}
+  .info h2{font-size:19px;font-weight:600;margin:0 0 8px;letter-spacing:-.01em}
+  .info p{font-size:14px;line-height:1.55;color:var(--muted);margin:0 0 14px;text-wrap:pretty}
+  dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:13px}
+  dt{color:var(--muted)} dd{margin:0;font-family:var(--mono);font-size:12.5px;text-align:right}
+  .field{margin-top:18px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chips button{border:1px solid var(--rule);background:var(--chip);border-radius:7px;padding:8px 11px;font-size:13px;font-weight:500;
+    font-variant-numeric:tabular-nums;min-height:36px;min-width:44px;
+    transition:background-color .16s ease,border-color .16s ease,transform .16s var(--ease-out)}
+  .chips button[aria-pressed=true]{background:var(--chip-on);border-color:var(--accent)}
+  .check{display:flex;align-items:center;gap:8px;font-size:13px;margin-top:16px;color:var(--muted)}
+  .check input{accent-color:var(--accent);width:16px;height:16px}
+  .steps{margin:20px 0 0;padding:16px 0 0 18px;border-top:1px solid var(--rule);font-size:13px;line-height:1.5;color:var(--muted);display:grid;gap:6px}
+  .steps li::marker{font-weight:600;color:var(--muted)}
+  .steps li{transition:color .2s ease}
+  .steps li.on{color:var(--ink)}
+  .steps li.on::marker{color:var(--accent)}
+
+  .hud{position:fixed;right:16px;bottom:16px;width:310px;background:var(--panel);border:1px solid var(--rule);border-radius:12px;padding:14px 16px;z-index:4}
+  .hud .read{display:flex;align-items:baseline;justify-content:flex-end;gap:8px;background:#071423;border-radius:8px;padding:10px 14px;margin:6px 0 10px}
+  .hud .val{font:600 40px/1 var(--mono);color:#ffc857;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+  .hud .unit{font:500 14px var(--mono);color:#ffc857;opacity:.75}
+  .lamps{display:flex;gap:14px;font-size:12px;font-weight:500;color:var(--muted)}
+  .lamps span{display:flex;align-items:center;gap:6px}
+  .lamps i{width:8px;height:8px;border-radius:50%;border:1px solid var(--muted);transition:background-color .2s ease,border-color .2s ease}
+  .lamps .on i{background:var(--accent);border-color:var(--accent)}
+  .lamps .on{color:var(--ink)}
+  .msg{font-size:13px;margin:10px 0 0;min-height:1.5em}
+
+  .cartouche{position:fixed;right:16px;bottom:16px;z-index:3;border:1px solid var(--ink);font:500 11px var(--mono);display:grid;grid-template-columns:auto auto;background:var(--bg);opacity:.92}
+  .cartouche div{padding:6px 10px;border-right:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+  .cartouche div:nth-child(2n){border-right:0}
+  .cartouche b{display:block;font-weight:500;font-size:9.5px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin-bottom:2px}
+  .cartouche .wide{grid-column:1/-1;border-right:0;border-bottom:0;color:var(--muted)}
+
+  .dim-label{font:500 11px var(--mono);color:var(--dim);background:var(--bg);padding:1px 5px;white-space:nowrap}
+  .tag{width:0;height:0;position:relative}
+  .tag i{position:absolute;left:-3px;top:-3px;width:6px;height:6px;border-radius:50%;background:var(--accent)}
+  .tag span{position:absolute;left:9px;top:-11px;white-space:nowrap;font:500 11.5px var(--sans);color:var(--ink);background:var(--bg);padding:1px 6px;border:1px solid var(--rule);border-radius:4px}
+  .tag.big span{font-size:12.5px;font-weight:600}
+
+  @media (max-width:760px){
+    .bar{height:56px;padding:0 12px;gap:8px}
+    .brand > div,.mark{display:none}
+    .seg button{padding:7px 8px}
+    .seg button{padding:7px 9px;font-size:12px}
+    .ghost{padding:7px 9px}
+    .panel{top:auto;left:0;right:0;bottom:0;width:auto;max-height:42vh;border-radius:14px 14px 0 0;padding:14px 16px}
+    .items{grid-template-columns:repeat(2,1fr)}
+    .items button{font-size:13px;padding:8px}
+    .hud{top:66px;bottom:auto;right:10px;width:auto;padding:8px 10px}
+    .hud .label,.hud .lamps{display:none}
+    .hud .read{margin:0;padding:6px 10px}
+    .hud .val{font-size:24px}
+    .msg{font-size:11.5px;margin-top:6px;max-width:200px}
+    .cartouche{display:none}
+  }
+  @media (prefers-reduced-motion:reduce){button:active{transform:none}}
+</style>
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+</head>
+<body>
+<canvas id="scene" aria-label="Modelo 3D interactivo. Arrastra para girar, rueda o pellizco para acercar."></canvas>
+<div id="labels"></div>
+<div class="loading" id="loading" role="status">Cargando modelos 3D…</div>
+
+<header class="bar">
+  <div class="brand">
+    <div class="mark">JB</div>
+    <div><strong>Comercializadora JB</strong><small>Básculas ganaderas · modelos técnicos</small></div>
+  </div>
+  <nav class="seg" role="tablist" aria-label="Vista">
+    <button role="tab" data-mode="catalogo" aria-selected="true">Componentes</button>
+    <button role="tab" data-mode="conjunto" aria-selected="false">Conjunto animado</button>
+  </nav>
+  <button id="themeBtn" class="ghost" type="button">Papel</button>
+</header>
+
+<aside class="panel">
+  <nav class="products" aria-label="Productos"><a href="index.html">Camioneras</a><a href="ganaderas.html" aria-current="page">Ganaderas</a><a href="silos.html">Silos</a><a href="contenedores.html">Contenedores</a></nav>
+  <section id="catPanel">
+    <ol class="items" id="items"></ol>
+    <div class="info">
+      <h2 id="infoTitle"></h2>
+      <p id="infoText"></p>
+      <dl id="infoSpecs"></dl>
+      <div class="field" id="capCatRow">
+        <p class="label">Capacidad</p>
+        <div class="chips" id="capCat"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="asmPanel" hidden>
+    <p class="label">Tipo de báscula</p>
+    <div class="chips" id="typeChips">
+      <button data-type="jaula" aria-pressed="true">Jaula</button>
+      <button data-type="plataforma" aria-pressed="false">Plataforma</button>
+    </div>
+    <div class="field">
+      <p class="label">Capacidad</p>
+      <div class="chips" id="capAsm"></div>
+    </div>
+    <div class="field">
+      <p class="label">Animación</p>
+      <div class="chips">
+        <button id="playBtn" aria-pressed="true">Pausar</button>
+        <button id="restartBtn">Reiniciar</button>
+      </div>
+    </div>
+    <div class="field">
+      <p class="label">Cámara</p>
+      <div class="chips" id="camChips">
+        <button data-cam="general" aria-pressed="true">General</button>
+        <button data-cam="seguir" aria-pressed="false">Seguir animal</button>
+        <button data-cam="celdas" aria-pressed="false">Celdas</button>
+        <button data-cam="indicador" aria-pressed="false">Indicador</button>
+      </div>
+    </div>
+    <label class="check"><input type="checkbox" id="labelsChk" checked> Mostrar nombres de componentes</label>
+    <ol class="steps" id="steps">
+      <li data-s="1">El animal entra por la puerta corrediza y sube al piso de madera.</li>
+      <li data-s="2">La puerta se cierra y el animal queda encerrado.</li>
+      <li data-s="3">Las 4 celdas de carga mandan su señal a la caja suma y de ahí al indicador.</li>
+      <li data-s="4">El indicador muestra el peso con divisiones de 500 g y avisa cuando está estable.</li>
+    </ol>
+  </section></aside>
+
+<div class="hud" id="hud" hidden aria-live="polite">
+  <p class="label">Indicador, peso bruto</p>
+  <div class="read"><span class="val" id="hudVal">0</span><span class="unit">kg</span></div>
+  <div class="lamps">
+    <span id="lEst"><i></i>Estable</span><span id="lCero"><i></i>Cero</span><span id="lMov"><i></i>Movimiento</span>
+  </div>
+  <p class="msg" id="hudMsg"></p>
+</div>
+
+<div class="cartouche" id="cartouche">
+  <div><b>Cliente</b>Comercializadora JB</div>
+  <div><b>Hoja</b><span id="cSheet">02 / 05</span></div>
+  <div><b>Plano</b><span id="cName">Báscula tipo jaula</span></div>
+  <div><b>Escala</b>Ilustrativa</div>
+  <div class="wide">Medidas aproximadas, solo para presentación</div>
+</div>
+
+<script>
+  setTimeout(function(){
+    if (window.__ready) return;
+    var el = document.getElementById('loading');
+    el.className = 'loading error';
+    el.textContent = 'No se pudo cargar el motor 3D. Revisa la conexión a internet y vuelve a abrir la página.';
+  }, 15000);
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
+import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
+import { Line2 } from 'three/addons/lines/Line2.js';
+import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
+import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const V = (x=0,y=0,z=0) => new THREE.Vector3(x,y,z);
+
+/* ---------- temas ---------- */
+const THEMES = {
+  plano:{bg:0x0d2c4f, fill:0x0f3157, ink:0xe8f1ff, thin:0xb9d0ee, dim:0x8db4e2, accent:0xffc857, hidden:0x7ea6d6,
+    gridMinor:0x15406b, gridMajor:0x245a8e, cable:0xa9c4e6,
+    scr:{bg:'#0b2340', fg:'#e8f1ff', muted:'#8db4e2', accent:'#ffc857', rule:'rgba(232,241,255,.16)'}},
+  papel:{bg:0xf3f0e8, fill:0xfbf9f4, ink:0x1c2431, thin:0x3d4a5c, dim:0x5d6c80, accent:0xc2410c, hidden:0x8a96a6,
+    gridMinor:0xe6dfd1, gridMajor:0xd3c9b5, cable:0x4b5a70,
+    scr:{bg:'#ffffff', fg:'#1c2431', muted:'#5d6c80', accent:'#c2410c', rule:'rgba(28,36,49,.12)'}}
+};
+let T = THEMES.plano;
+const LCD = '#ffc857';
+
+/* ---------- motor ---------- */
+const canvas = document.getElementById('scene');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const labelRenderer = new CSS2DRenderer({element: document.getElementById('labels')});
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x0d2c4f, 40, 120);
+const camera = new THREE.PerspectiveCamera(32, 1, 0.02, 600);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.autoRotateSpeed = 0.7;
+
+const lineMats = [];
+function LM(o){ const m = new LineMaterial(o); lineMats.push(m); return m; }
+const M = {
+  fill: new THREE.MeshBasicMaterial({side:THREE.DoubleSide, polygonOffset:true, polygonOffsetFactor:1, polygonOffsetUnits:1, fog:false}),
+  ink: LM({linewidth:1.5}),
+  thin: LM({linewidth:0.9}),
+  dim: LM({linewidth:0.9}),
+  accent: LM({linewidth:2.3}),
+  hidden: LM({linewidth:0.9, dashed:true, dashSize:0.22, gapSize:0.14}),
+  cable: LM({linewidth:1.3}),
+};
+const gridMinorMat = new THREE.LineBasicMaterial();
+const gridMajorMat = new THREE.LineBasicMaterial();
+const pulseMat = new THREE.MeshBasicMaterial({fog:false});
+
+/* ---------- utilidades de dibujo ---------- */
+function edgesOf(geo, th=20){ return new LineSegmentsGeometry().fromEdgesGeometry(new THREE.EdgesGeometry(geo, th)); }
+function solid(geo, o={}){
+  const g = new THREE.Group();
+  if (o.fill !== false){ const mesh = new THREE.Mesh(geo, M.fill); g.add(mesh); }
+  const ls = new LineSegments2(edgesOf(geo, o.th ?? 20), M[o.line || 'ink']);
+  if (ls.material.dashed) ls.computeLineDistances();
+  g.add(ls);
+  return g;
+}
+function place(o,x=0,y=0,z=0){ o.position.set(x,y,z); return o; }
+function B(w,h,d,x,y,z,o){ return place(solid(new THREE.BoxGeometry(w,h,d),o),x,y,z); }
+function C(r,h,x,y,z,o={},axis='y',seg=28){
+  const geo = new THREE.CylinderGeometry(o.r2 ?? r, r, h, seg);
+  if (axis==='x') geo.rotateZ(Math.PI/2);
+  if (axis==='z') geo.rotateX(Math.PI/2);
+  return place(solid(geo,o),x,y,z);
+}
+function segs(pts, mat='thin'){
+  const arr = []; pts.forEach(p => arr.push(p[0],p[1],p[2]));
+  const g = new LineSegmentsGeometry(); g.setPositions(arr);
+  const ls = new LineSegments2(g, M[mat]); if (M[mat].dashed) ls.computeLineDistances();
+  return ls;
+}
+function poly(pts, mat='cable'){
+  const arr = []; pts.forEach(p => arr.push(p.x,p.y,p.z));
+  const g = new LineGeometry(); g.setPositions(arr);
+  const l = new Line2(g, M[mat]); l.computeLineDistances(); return l;
+}
+function rectXZ(x0,z0,x1,z1,y){ return [[x0,y,z0],[x1,y,z0],[x1,y,z0],[x1,y,z1],[x1,y,z1],[x0,y,z1],[x0,y,z1],[x0,y,z0]]; }
+function rectXY(x0,y0,x1,y1,z){ return [[x0,y0,z],[x1,y0,z],[x1,y0,z],[x1,y1,z],[x1,y1,z],[x0,y1,z],[x0,y1,z],[x0,y0,z]]; }
+function tag(text, pos, big=false){
+  const el = document.createElement('div'); el.className = 'tag' + (big ? ' big' : '');
+  el.innerHTML = '<i></i><span></span>'; el.querySelector('span').textContent = text;
+  const o = new CSS2DObject(el); o.position.copy(pos); return o;
+}
+function dimension(a,b,off,text,tick){
+  const g = new THREE.Group();
+  const n = off.clone().normalize();
+  const a2 = a.clone().add(off), b2 = b.clone().add(off);
+  const over = n.clone().multiplyScalar(tick*0.9), gap = n.clone().multiplyScalar(tick*0.4);
+  const dir = b2.clone().sub(a2).normalize();
+  const t = dir.clone().add(n).normalize().multiplyScalar(tick*0.7);
+  const P = [a.clone().add(gap), a2.clone().add(over), b.clone().add(gap), b2.clone().add(over), a2, b2,
+             a2.clone().sub(t), a2.clone().add(t), b2.clone().sub(t), b2.clone().add(t)];
+  g.add(segs(P.map(v => [v.x,v.y,v.z]), 'dim'));
+  const el = document.createElement('div'); el.className = 'dim-label'; el.textContent = text;
+  const lab = new CSS2DObject(el);
+  lab.position.copy(a2.clone().add(b2).multiplyScalar(0.5));
+  g.add(lab);
+  return g;
+}
+function makeGrid(size, step, majorEvery=5){
+  const minor = [], major = []; const n = Math.round(size/step), h = size/2;
+  for (let i=0;i<=n;i++){
+    const p = -h + i*step; const arr = (i % majorEvery === 0) ? major : minor;
+    arr.push(-h,0,p, h,0,p, p,0,-h, p,0,h);
+  }
+  const g = new THREE.Group();
+  [[minor,gridMinorMat],[major,gridMajorMat]].forEach(([a,m]) => {
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(a,3));
+    g.add(new THREE.LineSegments(geo, m));
+  });
+  g.position.y = -0.002;
+  return g;
+}
+function makeScreen(w,h,pw,ph){
+  const c = document.createElement('canvas'); c.width = pw; c.height = ph;
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+  const mat = new THREE.MeshBasicMaterial({map:tex, fog:false, polygonOffset:true, polygonOffsetFactor:-1, polygonOffsetUnits:-4});
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w,h), mat); mesh.userData.own = true;
+  return {c, ctx:c.getContext('2d'), tex, mesh};
+}
+const fmt = v => Math.round(v).toLocaleString('es-MX');
+
+/* ---------- pantallas ---------- */
+function drawIndicator(s, val, f={}){
+  const {ctx, c} = s; const W = c.width, H = c.height;
+  ctx.fillStyle = '#071423'; ctx.fillRect(0,0,W,H);
+  ctx.textBaseline = 'middle';
+  ctx.font = '600 86px "IBM Plex Mono", monospace'; ctx.textAlign = 'right';
+  ctx.fillStyle = 'rgba(255,200,87,.07)'; ctx.fillText('888888', W-70, H/2+4);
+  ctx.fillStyle = LCD; ctx.fillText((typeof val === 'string' ? val : String(Math.round(val))), W-70, H/2+4);
+  ctx.font = '500 26px "IBM Plex Mono", monospace'; ctx.textAlign = 'left';
+  ctx.globalAlpha = .8; ctx.fillText('kg', W-62, H/2+20); ctx.globalAlpha = 1;
+  const lamps = [['EST', f.stable], ['CERO', f.zero], ['MOV', f.moving]];
+  ctx.font = '500 17px "IBM Plex Mono", monospace';
+  lamps.forEach(([t,on],i) => {
+    const y = 28 + i*36;
+    ctx.beginPath(); ctx.arc(22,y,6,0,Math.PI*2);
+    ctx.fillStyle = on ? LCD : 'rgba(255,200,87,.15)'; ctx.fill();
+    ctx.fillStyle = on ? LCD : 'rgba(255,200,87,.3)'; ctx.fillText(t, 36, y+1);
+  });
+  s.tex.needsUpdate = true;
+}
+function drawLaptop(s, d){
+  const {ctx, c} = s; const W = c.width, H = c.height, S = T.scr;
+  ctx.fillStyle = S.bg; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle = S.rule; ctx.fillRect(0,46,W,1);
+  ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  ctx.fillStyle = S.fg; ctx.font = '600 20px "IBM Plex Sans", sans-serif'; ctx.fillText('Software de pesaje', 22, 24);
+  ctx.textAlign = 'right'; ctx.fillStyle = S.muted; ctx.font = '500 15px "IBM Plex Mono", monospace';
+  ctx.fillText('Báscula 1 · en línea', W-22, 24);
+  ctx.textAlign = 'left'; ctx.fillStyle = S.muted; ctx.font = '500 14px "IBM Plex Mono", monospace';
+  ctx.fillText('PESO ACTUAL', 22, 74);
+  ctx.fillStyle = S.fg; ctx.font = '600 58px "IBM Plex Mono", monospace';
+  ctx.fillText(fmt(d.value) + ' kg', 22, 122);
+  const chip = d.stable ? 'ESTABLE' : (d.moving ? 'EN MOVIMIENTO' : 'EN CERO');
+  ctx.font = '600 14px "IBM Plex Mono", monospace';
+  const cw = ctx.measureText(chip).width + 22;
+  ctx.fillStyle = d.stable ? S.accent : S.rule; ctx.fillRect(W-22-cw, 108, cw, 28);
+  ctx.fillStyle = d.stable ? S.bg : S.fg; ctx.textAlign = 'center'; ctx.fillText(chip, W-22-cw/2, 123);
+  ctx.textAlign = 'left'; ctx.fillStyle = S.muted; ctx.font = '500 14px "IBM Plex Mono", monospace';
+  ctx.fillText('BOLETAS DE HOY', 22, 178);
+  ctx.fillStyle = S.rule; ctx.fillRect(22,196,W-44,1);
+  const cols = [22, 170, 300];
+  ctx.fillText('Boleta', cols[0], 214); ctx.fillText('Hora', cols[1], 214);
+  ctx.textAlign = 'right'; ctx.fillText('Peso bruto', W-22, 214); ctx.textAlign = 'left';
+  if (!d.tickets.length){ ctx.fillStyle = S.muted; ctx.font = '400 15px "IBM Plex Sans", sans-serif'; ctx.fillText('Las boletas aparecen aquí al registrar cada pesada.', 22, 250); }
+  d.tickets.slice(0,4).forEach((t,i) => {
+    const y = 250 + i*34;
+    ctx.fillStyle = i === 0 && d.fresh ? S.accent : S.fg; ctx.font = '500 16px "IBM Plex Mono", monospace';
+    ctx.fillText('#' + String(t.n).padStart(4,'0'), cols[0], y); ctx.fillText(t.hora, cols[1], y);
+    ctx.textAlign = 'right'; ctx.fillText(fmt(t.peso) + ' kg', W-22, y); ctx.textAlign = 'left';
+    ctx.fillStyle = S.rule; ctx.fillRect(22, y+17, W-44, 1);
+  });
+  s.tex.needsUpdate = true;
+}
+function drawUPS(s){
+  const {ctx, c} = s; const W = c.width, H = c.height;
+  ctx.fillStyle = '#071423'; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle = LCD; ctx.lineWidth = 4; ctx.strokeRect(20,30,130,56); ctx.fillStyle = LCD; ctx.fillRect(150,46,10,24);
+  for (let i=0;i<4;i++) ctx.fillRect(30+i*30, 40, 22, 36);
+  ctx.font = '600 34px "IBM Plex Mono", monospace'; ctx.textBaseline = 'middle'; ctx.fillText('100%', 172, 60);
+  s.tex.needsUpdate = true;
+}
+
+/* ---------- componentes ---------- */
+M.tube = LM({linewidth:0.03, worldUnits:true});
+function tubes(pairs){
+  const arr = []; pairs.forEach(([a,b]) => arr.push(a.x,a.y,a.z,b.x,b.y,b.z));
+  const g = new LineSegmentsGeometry(); g.setPositions(arr);
+  return new LineSegments2(g, M.tube);
+}
+function buildCell(){
+  const g = new THREE.Group();
+  g.add(C(0.03,0.006, 0.05,0.003,0,{line:'thin'}));
+  g.add(C(0.012,0.03, 0.05,0.021,0));
+  g.add(B(0.14,0.032,0.032, 0,0.052,0));
+  g.add(C(0.009,0.034, -0.045,0.052,0,{line:'thin'}));
+  g.add(C(0.009,0.034, -0.02,0.052,0,{line:'thin'}));
+  g.add(C(0.009,0.034, 0.012,0.052,0,{line:'thin'},'z'));
+  g.add(C(0.008,0.02, -0.08,0.052,0,{},'x'));
+  return g;
+}
+function buildJunctionBox(){
+  const g = new THREE.Group();
+  g.add(B(0.16,0.12,0.07, 0,0.06,0));
+  g.add(B(0.168,0.128,0.01, 0,0.06,0.04));
+  g.add(segs(rectXY(-0.074,0.004,0.074,0.116,0.0455),'thin'));
+  [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(([a,b]) => g.add(C(0.006,0.004, a*0.068,0.06+b*0.05,0.047,{line:'thin'},'z',16)));
+  for (let i=0;i<5;i++) g.add(C(0.008,0.022, -0.056+i*0.028,-0.011,0,{line:'thin'},'y',16));
+  return g;
+}
+function buildIndicator(){
+  const g = new THREE.Group();
+  g.add(B(0.36,0.01,0.16, 0,0.005,0));
+  g.add(B(0.012,0.17,0.04, -0.176,0.09,0)); g.add(B(0.012,0.17,0.04, 0.176,0.09,0));
+  g.add(C(0.022,0.016, -0.19,0.15,0,{},'x')); g.add(C(0.022,0.016, 0.19,0.15,0,{},'x'));
+  const body = new THREE.Group(); body.position.set(0,0.15,0); body.rotation.x = -0.22; g.add(body);
+  body.add(B(0.33,0.19,0.11, 0,0,0));
+  body.add(B(0.25,0.068,0.006, 0,0.043,0.058));
+  const scr = makeScreen(0.228,0.057,512,128); scr.mesh.position.set(0,0.043,0.0612); body.add(scr.mesh);
+  for (let r=0;r<2;r++) for (let c=0;c<6;c++) body.add(B(0.03,0.018,0.006, -0.1+c*0.04,-0.03-r*0.03,0.058,{line:'thin'}));
+  drawIndicator(scr, '0.0', {zero:true, stable:true});
+  return {group:g, screen:scr};
+}
+
+const CAPS = {1500:{L:2.3, W:0.9}, 2000:{L:2.5, W:1.0}};
+const kgLabel = c => `${Number(c).toLocaleString('es-MX')} kg`;
+function buildScale(cap, cage){
+  const {L, W} = CAPS[cap];
+  const frameBot = 0.068, frameH = 0.1, deckT = 0.032, H = frameBot + frameH + deckT, R = 0.6;
+  const g = new THREE.Group();
+  [-1,1].forEach(s => {
+    g.add(B(L, frameH, 0.06, 0, frameBot+frameH/2, s*(W/2-0.03)));
+    g.add(B(0.06, frameH, W-0.12, s*(L/2-0.03), frameBot+frameH/2, 0));
+  });
+  [-L/4, 0, L/4].forEach(x => g.add(B(0.05, 0.08, W-0.12, x, frameBot+0.04, 0, {line:'thin'})));
+  g.add(B(L, deckT, W, 0, H-deckT/2, 0));
+  const planks = [];
+  for (let x=-L/2+0.15; x<L/2-0.01; x+=0.15) planks.push([x,H+0.001,-W/2],[x,H+0.001,W/2]);
+  g.add(segs(planks,'thin'));
+  const cells = [], cellPos = [];
+  [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(([sx,sz]) => {
+    const c = buildCell(); const x = sx*(L/2-0.15), z = sz*(W/2-0.03);
+    c.position.set(x, 0, z); c.rotation.y = sx > 0 ? 0 : Math.PI; g.add(c); cells.push(c);
+    cellPos.push(V(x - sx*0.09, 0.052, z));
+  });
+  [-1,1].forEach(s => {
+    const sh = new THREE.Shape(); sh.moveTo(0,0); sh.lineTo(R,0); sh.lineTo(0,H); sh.closePath();
+    const geo = new THREE.ExtrudeGeometry(sh, {depth:W, bevelEnabled:false}); geo.translate(0,0,-W/2);
+    if (s < 0) geo.scale(-1,1,1);
+    g.add(place(solid(geo), s*(L/2+0.01), 0, 0));
+  });
+  const doors = {};
+  const top = H + 1.75, header = H + 1.88;
+  if (cage){
+    const xs = [-(L/2-0.03), 0, L/2-0.03], pairs = [];
+    [-1,1].forEach(s => {
+      const z = s*(W/2-0.03);
+      xs.forEach(x => pairs.push([V(x,H,z), V(x,header,z)]));
+      [0.45, 0.8, 1.15, 1.5, 1.75].forEach(y => pairs.push([V(xs[0],H+y,z), V(xs[2],H+y,z)]));
+    });
+    g.add(tubes(pairs));
+    // portones corredizos en ambos extremos
+    [-1,1].forEach(s => {
+      const x = s*(L/2+0.03), zEnd = W/2 + W + 0.12;
+      g.add(B(0.07, 0.07, zEnd + W/2, x, header+0.035, (zEnd - W/2)/2));
+      g.add(tubes([[V(x,0,zEnd), V(x,header,zEnd)]]));
+      const door = new THREE.Group(); door.position.set(x, 0, 0);
+      const z0 = -W/2+0.03, z1 = W/2-0.03, y0 = H+0.08, y1 = H+1.72, dp = [];
+      [[V(0,y0,z0),V(0,y0,z1)],[V(0,y1,z0),V(0,y1,z1)],[V(0,y0,z0),V(0,y1,z0)],[V(0,y0,z1),V(0,y1,z1)],[V(0,y0,0),V(0,y1,0)]]
+        .forEach(p => dp.push(p));
+      [0.5, 0.9, 1.3].forEach(y => dp.push([V(0,H+y,z0), V(0,H+y,z1)]));
+      [z0+0.1, z1-0.1].forEach(z => dp.push([V(0,y1,z), V(0,header,z)]));
+      door.add(tubes(dp));
+      [z0+0.1, z1-0.1].forEach(z => door.add(C(0.035,0.03, 0,header,z,{line:'thin'},'x',20)));
+      g.add(door);
+      doors[s < 0 ? 'in' : 'out'] = door;
+    });
+  }
+  const heightAt = x => {
+    const a = Math.abs(x);
+    if (a <= L/2+0.01) return H;
+    if (a < L/2+0.01+R) return H*(1-(a-L/2-0.01)/R);
+    return 0;
+  };
+  const setDoor = (k, open) => { if (doors[k]) doors[k].position.z = open*(W+0.06); };
+  return {group:g, L, W, H, R, top, header, cells, cellPos, heightAt, doors, setDoor, cage};
+}
+
+function buildAnimal(){
+  const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  body.add(B(1.26,0.6,0.54, 0,1.02,0));
+  const neck = place(solid(new THREE.BoxGeometry(0.34,0.3,0.3)), 0.66,1.16,0); neck.rotation.z = -0.5; body.add(neck);
+  const head = new THREE.Group(); head.position.set(0.86,1.06,0); body.add(head);
+  head.add(B(0.34,0.24,0.24, 0,0,0));
+  head.add(B(0.1,0.17,0.2, 0.2,-0.04,0,{line:'thin'}));
+  [-1,1].forEach(s => { head.add(B(0.05,0.04,0.12, -0.08,0.1,s*0.17,{line:'thin'})); head.add(C(0.016,0.09, -0.12,0.14,s*0.13,{line:'thin'},'z',12)); });
+  const tail = new THREE.Group(); tail.position.set(-0.63,1.24,0); body.add(tail);
+  tail.add(B(0.035,0.62,0.035, 0,-0.31,0,{line:'thin'}));
+  const legs = [];
+  [[0.46,-0.16,0],[0.46,0.16,Math.PI],[-0.46,-0.16,Math.PI],[-0.46,0.16,0]].forEach(([x,z,off]) => {
+    const p = new THREE.Group(); p.position.set(x,0.74,z);
+    p.add(B(0.12,0.66,0.12, 0,-0.33,0));
+    p.add(B(0.13,0.08,0.13, 0,-0.70,0,{line:'thin'}));
+    body.add(p); legs.push({p, x, off});
+  });
+  const weight = 642.5, share = [0.28,0.28,0.22,0.22];
+  let phase = 0, swing = 0;
+  return {group:g, legs, weight, loads: share.map(s => s*weight),
+    update(x, dx, hAt, t){
+      const yF = hAt(x+0.46), yR = hAt(x-0.46);
+      g.position.set(x, (yF+yR)/2, 0);
+      g.rotation.z = Math.atan2(yF-yR, 0.92);
+      phase += dx*5.6;
+      swing += ((Math.abs(dx) > 1e-4 ? 1 : 0) - swing)*0.12;
+      legs.forEach(l => l.p.rotation.z = Math.sin(phase + l.off)*0.36*swing);
+      body.position.y = Math.abs(Math.sin(phase))*0.02*swing;
+      head.rotation.z = Math.sin(phase*0.5)*0.05*swing + Math.sin(t*0.7)*0.06*(1-swing);
+      tail.rotation.x = Math.sin(t*2.1)*0.18;
+    }};
+}
+
+/* ---------- catálogo ---------- */
+const ITEMS = [
+  {id:'plataforma', name:'Báscula tipo plataforma', text:'Estructura de acero niquelado con piso de madera, apoyada en 4 celdas de carga niqueladas. Lleva rampas cortas para que el animal suba sin tropezar.'},
+  {id:'jaula', name:'Báscula tipo jaula', text:'La misma plataforma con redilas de tubo cédula 30 y puertas corredizas: el animal entra, queda encerrado mientras se pesa y sale por el otro lado.'},
+  {id:'celda', name:'Celda de carga niquelada', text:'Va una en cada esquina de la plataforma. Convierte el peso que recibe en una señal eléctrica.',
+    specs:[['Acabado','Niquelado'],['Por báscula','4'],['Salida','Señal hacia la caja suma']],
+    tags:[['Pata niveladora',V(0.05,0.0,0)],['Cuerpo de la celda',V(0.0,0.068,0)],['Salida de cable',V(-0.09,0.052,0)]]},
+  {id:'caja', name:'Caja suma hermética', text:'Junta las señales de las 4 celdas y las manda al indicador por un solo cable. Es hermética para protegerla del agua y el polvo del corral.',
+    specs:[['Entradas','4 celdas'],['Salida','1 cable al indicador'],['Protección','Hermética']],
+    tags:[['Tapa con empaque',V(0.084,0.12,0.045)],['Entradas de cable',V(-0.056,-0.022,0)]]},
+  {id:'indicador', name:'Indicador digital', text:'Muestra el peso en kilos con divisiones de 500 g y avisa cuando la lectura está estable, aunque el animal se mueva un poco.',
+    specs:[['División','500 g'],['Avisos','Estable, cero y movimiento'],['Conexión','Caja suma']],
+    tags:[['Pantalla de peso',V(0.11,0.205,0.045)],['Teclado de funciones',V(0.1,0.12,0.075)],['Soporte',V(0.18,0.01,0.08)]]},
+];
+
+const state = {mode:'catalogo', item:'jaula', cap:1500, type:'jaula', theme:'plano', labels:true, cam:'general'};
+let root = null, asm = null, screens = [], firstFit = true;
+
+function disposeTree(o){
+  o.traverse(c => {
+    if (c.isCSS2DObject && c.element.parentNode) c.element.remove();
+    if (c.geometry) c.geometry.dispose();
+    if (c.userData.own){ c.material.map && c.material.map.dispose(); c.material.dispose(); }
+  });
+}
+function setRoot(g){
+  if (root){ scene.remove(root); disposeTree(root); }
+  root = g; scene.add(g);
+}
+const fmtKg = v => v.toLocaleString('es-MX', {minimumFractionDigits:1, maximumFractionDigits:1});
+
+function buildCatalogItem(id){
+  const g = new THREE.Group(); let info = {}, fit = null;
+  screens = [];
+  if (id === 'plataforma' || id === 'jaula'){
+    const P = buildScale(state.cap, id === 'jaula'); g.add(P.group); fit = P.group;
+    const {L, W, H} = P, tk = 0.06;
+    g.add(dimension(V(-L/2,H,-W/2), V(L/2,H,-W/2), V(0,0,-0.45), `${L.toFixed(2)} m`, tk));
+    g.add(dimension(V(L/2+P.R,0,-W/2), V(L/2+P.R,0,W/2), V(0.35,0,0), `${W.toFixed(2)} m`, tk));
+    g.add(dimension(V(-L/2,0,W/2), V(-L/2,H,W/2), V(0,0,0.35), `${(H*1000).toFixed(0)} mm`, 0.03));
+    g.add(tag('Piso de madera', V(-L/4, H, 0), true));
+    g.add(tag('4 celdas de carga niqueladas', P.cellPos[2].clone().add(V(0,0,0.05)), true));
+    g.add(tag('Rampa', V(-L/2-P.R*0.5, H*0.5, 0), true));
+    if (P.cage){
+      g.add(dimension(V(L/2,H,W/2), V(L/2,P.header,W/2), V(0,0,0.35), `${(P.header-H).toFixed(2)} m`, tk));
+      g.add(tag('Redilas de tubo cédula 30', V(0.4, H+1.15, -W/2), true));
+      g.add(tag('Puerta corrediza', V(-L/2-0.03, H+1.3, 0.2), true));
+      P.setDoor('out', 0.55);
+    } else {
+      g.add(tag('Estructura de acero niquelado', V(L/2-0.03, 0.12, W/2), true));
+    }
+    g.add(makeGrid(10, 0.25, 4));
+    info = {specs:[['Capacidad', kgLabel(state.cap)],['División','500 g'],['Estructura','Acero niquelado'],['Piso','Madera'],['Celdas','4 niqueladas']]
+      .concat(P.cage ? [['Redilas','Tubo cédula 30'],['Puertas','Corredizas']] : [])};
+  } else {
+    const it = ITEMS.find(i => i.id === id);
+    let model;
+    if (id === 'celda') model = buildCell();
+    if (id === 'caja') model = buildJunctionBox();
+    if (id === 'indicador'){ const o = buildIndicator(); model = o.group; screens.push(() => drawIndicator(o.screen, '0.0', {zero:true, stable:true})); }
+    g.add(model); fit = model;
+    (it.tags || []).forEach(([t,p]) => model.add(tag(t,p)));
+    const box = new THREE.Box3().setFromObject(model);
+    const sz = box.getSize(V()); const mx = Math.max(sz.x,sz.y,sz.z);
+    const k = mx*0.22, tk = mx*0.035, mm = v => `${Math.round(v*1000/5)*5} mm`;
+    const {min, max} = box;
+    g.add(dimension(V(min.x,min.y,max.z), V(max.x,min.y,max.z), V(0,0,k), mm(sz.x), tk));
+    g.add(dimension(V(min.x,min.y,max.z), V(min.x,max.y,max.z), V(-k*0.8,0,k*0.4), mm(sz.y), tk));
+    g.add(dimension(V(max.x,min.y,min.z), V(max.x,min.y,max.z), V(k,0,0), mm(sz.z), tk));
+    g.position.y = -min.y;
+    const step = mx < 0.25 ? 0.02 : 0.05;
+    const grid = makeGrid(Math.ceil(mx*5/step/5)*step*5, step); grid.position.y = min.y - 0.002; g.add(grid);
+    info = {specs: it.specs};
+  }
+  return {group:g, info, fit};
+}
+
+function showCatalog(){
+  const {group, info, fit} = buildCatalogItem(state.item);
+  setRoot(group);
+  const it = ITEMS.find(i => i.id === state.item);
+  const idx = ITEMS.indexOf(it);
+  document.getElementById('infoTitle').textContent = it.name;
+  document.getElementById('infoText').textContent = it.text;
+  const dl = document.getElementById('infoSpecs'); dl.innerHTML = '';
+  info.specs.forEach(([a,b]) => { const dt = document.createElement('dt'); dt.textContent = a; const dd = document.createElement('dd'); dd.textContent = b; dl.append(dt,dd); });
+  document.getElementById('capCatRow').hidden = !(state.item === 'plataforma' || state.item === 'jaula');
+  document.getElementById('cName').textContent = it.name;
+  document.getElementById('cSheet').textContent = `${String(idx+1).padStart(2,'0')} / ${String(ITEMS.length).padStart(2,'0')}`;
+  document.querySelectorAll('#items button').forEach(b => b.setAttribute('aria-current', b.dataset.id === state.item));
+  controls.maxPolarAngle = Math.PI*0.92;
+  controls.autoRotate = !REDUCED;
+  group.updateMatrixWorld(true);
+  fitTo(fit, (state.item === 'plataforma' || state.item === 'jaula') ? 1.15 : 1.55);
+}
+
+/* ---------- conjunto ---------- */
+function buildAssembly(){
+  const g = new THREE.Group();
+  const cage = state.type === 'jaula';
+  const P = buildScale(state.cap, cage); g.add(P.group);
+  const {L, W, H} = P;
+  const zBox = W/2 + 0.32, poleX = 0.55, poleZ = W/2 + 1.0;
+  g.add(B(0.04,0.3,0.04, 0,0.15,zBox-0.06,{line:'thin'}));
+  const jb = buildJunctionBox(); jb.position.set(0,0.3,zBox); g.add(jb);
+  g.add(tubes([[V(poleX,0,poleZ), V(poleX,1.06,poleZ)]]));
+  g.add(B(0.3,0.02,0.04, poleX,0.01,poleZ,{line:'thin'}));
+  g.add(B(0.42,0.02,0.22, poleX,1.07,poleZ));
+  const ind = buildIndicator(); ind.group.position.set(poleX,1.08,poleZ+0.02); g.add(ind.group);
+
+  const paths = [];
+  const mkPath = pts => { const cum=[0]; for (let i=1;i<pts.length;i++) cum.push(cum[i-1]+pts[i].distanceTo(pts[i-1])); return {pts, cum, total:cum[cum.length-1]}; };
+  const zr = W/2 + 0.12;
+  P.cellPos.forEach((c,i) => {
+    const bx = -0.056 + i*0.028;
+    const pts = [c.clone(), V(c.x,0.015,c.z), V(c.x,0.015,zr+i*0.012), V(bx,0.015,zr+i*0.012), V(bx,0.015,zBox), V(bx,0.29,zBox)];
+    g.add(poly(pts)); paths.push({...mkPath(pts), speed:1.4, r:0.012});
+  });
+  const main = [V(0.056,0.29,zBox), V(0.056,0.015,zBox+0.05), V(0.056,0.015,poleZ), V(poleX-0.03,0.015,poleZ), V(poleX-0.03,1.07,poleZ), V(poleX-0.03,1.1,poleZ-0.05)];
+  g.add(poly(main)); paths.push({...mkPath(main), speed:0.9, r:0.01});
+  const pulses = [];
+  paths.forEach(p => { for (let k=0;k<2;k++){ const m = new THREE.Mesh(new THREE.SphereGeometry(p.r,10,8), pulseMat); m.visible = false; g.add(m); pulses.push({mesh:m, path:p, off:k*p.total/2}); } });
+  const cellLines = [];
+  P.cells.forEach(c => c.traverse(o => { if (o.isLineSegments2 && o.material === M.ink) cellLines.push(o); }));
+
+  const animal = buildAnimal(); g.add(animal.group);
+  const xs = -(L/2 + P.R + 2.6), xe = L/2 + P.R + 2.8, xStop = -0.04;
+
+  const labels = new THREE.Group();
+  labels.add(tag(cage ? 'Báscula tipo jaula' : 'Báscula tipo plataforma', V(-L/2+0.3, cage ? P.header+0.1 : H+0.1, -W/2), true));
+  if (cage) labels.add(tag('Puerta corrediza', V(L/2+0.03, H+1.5, -W/2+0.1), true));
+  labels.add(tag('Celdas de carga', P.cellPos[2].clone().add(V(0,0,0.05)), true));
+  labels.add(tag('Caja suma hermética', V(0.09,0.43,zBox), true));
+  labels.add(tag('Indicador digital', V(poleX+0.2,1.36,poleZ), true));
+  g.add(labels);
+  g.add(dimension(V(-L/2,H,-W/2), V(L/2,H,-W/2), V(0,0,-0.45), `${L.toFixed(2)} m · ${kgLabel(state.cap)}`, 0.06));
+  g.add(makeGrid(24, 0.5, 4));
+
+  screens = [];
+  asm = {group:g, P, ind, paths, pulses, cellLines, animal, xs, xe, xStop, labels, cage,
+         t:0, phase:'in', phaseT:0, x:xs, raw:0, disp:0, shown:-1, stableT:0, stable:false, moving:false,
+         lastDraw:0, lastKey:'', dIn:1, dOut:0};
+  P.setDoor('in', 1); P.setDoor('out', 0);
+  animal.update(xs, 0, P.heightAt, 0);
+  return g;
+}
+
+function showAssembly(resetCam=true){
+  setRoot(buildAssembly());
+  controls.autoRotate = false;
+  controls.maxPolarAngle = Math.PI*0.49;
+  applyLabels();
+  if (resetCam) setCam(state.cam, firstFit ? 0 : 1.1);
+  firstFit = false;
+}
+
+function camPreset(name){
+  const {L, W} = asm.P;
+  if (name === 'celdas'){ const t = V(-L/2+0.15, 0.06, W/2-0.03); return [t.clone().add(V(-0.75,0.3,1.05)), t]; }
+  if (name === 'indicador'){ const t = V(0.55,1.17,W/2+1.02); return [t.clone().add(V(0.45,0.22,1.0)), t]; }
+  if (name === 'seguir'){ const t = V(asm.x,0.9,0); return [t.clone().add(V(-2.6,1.9,3.9)), t]; }
+  const R = L/2 + asm.P.R + 1.2;
+  const vf = THREE.MathUtils.degToRad(camera.fov/2), hf = Math.atan(Math.tan(vf)*(panelOff.v||1)*panelOff.aspect);
+  const d = R/Math.sin(Math.min(Math.atan(Math.tan(vf)*(panelOff.v||1)),hf))*0.95;
+  const t = V(0,0.85,0.35);
+  return [t.clone().add(V(-0.5,0.42,0.8).normalize().multiplyScalar(d)), t];
+}
+function setCam(name, dur=1.1){
+  state.cam = name;
+  document.querySelectorAll('#camChips button').forEach(b => b.setAttribute('aria-pressed', b.dataset.cam === name));
+  const [p,t] = camPreset(name);
+  camera.near = 0.01; camera.far = 200; camera.updateProjectionMatrix();
+  scene.fog.near = 14; scene.fog.far = 30;
+  flyTo(p, t, dur);
+}
+
+const smooth = k => k*k*(3-2*k);
+const ease = k => k<.5 ? 4*k*k*k : 1 - Math.pow(-2*k+2,3)/2;
+const DUR = {in:7, close:1.3, weigh:7.5, open:1.3, out:7, reset:1.8};
+let playing = !REDUCED;
+
+function pointAt(p, d){
+  d = ((d % p.total) + p.total) % p.total;
+  let i = 1; while (i < p.cum.length-1 && p.cum[i] < d) i++;
+  const k = (d - p.cum[i-1]) / Math.max(1e-6, p.cum[i]-p.cum[i-1]);
+  return p.pts[i-1].clone().lerp(p.pts[i], k);
+}
+function setPhase(p){ asm.phase = p; asm.phaseT = 0; }
+function stepAnim(dt){
+  const A = asm; if (!A) return;
+  if (playing){
+    A.t += dt; A.phaseT += dt;
+    let x = A.x; const k = d => Math.min(1, A.phaseT/d);
+    if (A.phase === 'in'){ x = A.xs + (A.xStop - A.xs)*smooth(k(DUR.in)); if (k(DUR.in) >= 1) setPhase('close'); }
+    else if (A.phase === 'close'){ A.dIn = 1 - ease(k(DUR.close)); if (k(DUR.close) >= 1) setPhase('weigh'); }
+    else if (A.phase === 'weigh'){ if (A.phaseT > DUR.weigh) setPhase('open'); }
+    else if (A.phase === 'open'){ A.dOut = ease(k(DUR.open)); if (k(DUR.open) >= 1) setPhase('out'); }
+    else if (A.phase === 'out'){ x = A.xStop + (A.xe - A.xStop)*smooth(k(DUR.out)); if (k(DUR.out) >= 1) setPhase('reset'); }
+    else if (A.phase === 'reset'){ const e = ease(k(DUR.reset)); A.dOut = 1 - e; A.dIn = e; if (k(DUR.reset) >= 1){ setPhase('in'); x = A.xs; } }
+    if (!A.cage){ A.dIn = 0; A.dOut = 0; }
+    A.P.setDoor('in', A.dIn); A.P.setDoor('out', A.dOut);
+    const dx = Math.abs(x - A.x) > 3 ? 0 : x - A.x;
+    A.x = x; A.animal.group.visible = A.phase !== 'reset';
+    A.animal.update(x, dx, A.P.heightAt, A.t);
+    const L = A.P.L, moving = Math.abs(dx) > 1e-5;
+    let target = 0;
+    if (A.phase !== 'reset') A.animal.legs.forEach((l,i) => { if (Math.abs(x + l.x) <= L/2) target += A.animal.loads[i]; });
+    let noise = 0;
+    if (target > 0){
+      if (moving) noise = target*0.035*Math.sin(A.t*7.3) + target*0.015*Math.sin(A.t*15.1);
+      else noise = target*0.02*Math.exp(-A.phaseT*1.4)*Math.sin(A.t*5.2) + 1.0*Math.exp(-A.phaseT*0.9)*Math.sin(A.t*2.3);
+    }
+    A.raw = target + noise;
+    A.disp += (A.raw - A.disp)*(1 - Math.exp(-dt*4));
+    const shown = A.disp < 1 ? 0 : Math.round(A.disp*2)/2;
+    const settled = !moving && Math.abs(A.disp - target) < 0.4;
+    A.stableT = settled ? A.stableT + dt : 0;
+    A.stable = A.stableT > 0.8;
+    A.moving = !A.stable && shown > 0;
+    A.shown = shown;
+    const signal = shown > 0;
+    A.cellLines.forEach(l => l.material = signal ? M.accent : M.ink);
+    A.pulses.forEach(p => { p.mesh.visible = signal; if (signal) p.mesh.position.copy(pointAt(p.path, p.off + A.t*p.path.speed)); });
+  }
+  const key = `${A.shown}|${A.stable}|${A.moving}|${state.theme}`;
+  if (key !== A.lastKey && performance.now() - A.lastDraw > 90){
+    A.lastKey = key; A.lastDraw = performance.now();
+    drawIndicator(A.ind.screen, A.shown.toFixed(1), {stable:A.stable && A.shown>0, zero:A.shown===0, moving:A.moving});
+    hudVal.textContent = fmtKg(A.shown);
+    lEst.classList.toggle('on', A.stable && A.shown>0);
+    lCero.classList.toggle('on', A.shown === 0);
+    lMov.classList.toggle('on', A.moving);
+  }
+  let msg = '', step = 0;
+  if (A.phase === 'in'){ msg = A.shown > 0 ? 'El animal sube al piso de madera.' : (A.cage ? 'El animal se acerca a la puerta abierta.' : 'El animal se acerca a la báscula.'); step = 1; }
+  if (A.phase === 'close'){ msg = 'Se cierra la puerta corrediza.'; step = 2; }
+  if (A.phase === 'weigh'){ msg = A.stable ? `Peso estable: ${fmtKg(A.shown)} kg.` : 'El animal se acomoda, el indicador estabiliza la lectura.'; step = A.stable ? 4 : 3; }
+  if (A.phase === 'open'){ msg = 'Se abre la puerta de salida.'; }
+  if (A.phase === 'out'){ msg = 'El animal sale de la báscula.'; }
+  if (A.phase === 'reset'){ msg = 'Báscula en cero, lista para el siguiente animal.'; }
+  if (!A.cage && (A.phase === 'close' || A.phase === 'open')){ msg = A.phase === 'close' ? 'El animal se detiene sobre la plataforma.' : 'El animal sigue su camino.'; }
+  if (!playing) msg = 'Animación en pausa.';
+  if (hudMsg.textContent !== msg) hudMsg.textContent = msg;
+  document.querySelectorAll('#steps li').forEach(li => li.classList.toggle('on', +li.dataset.s <= step && step > 0));
+  if (state.cam === 'seguir' && !camTween){
+    const t = V(A.x, 0.9, 0); const delta = t.clone().sub(controls.target);
+    controls.target.add(delta); camera.position.add(delta);
+  }
+}
+const hudVal = document.getElementById('hudVal'), hudMsg = document.getElementById('hudMsg');
+const lEst = document.getElementById('lEst'), lCero = document.getElementById('lCero'), lMov = document.getElementById('lMov');
+function applyLabels(){ if (asm) asm.labels.children.forEach(c => c.visible = state.labels); }
+
+/* ---------- cámara ---------- */
+let camTween = null;
+function flyTo(pos, target, dur=1){
+  if (dur <= 0 || REDUCED){ camera.position.copy(pos); controls.target.copy(target); camTween = null; controls.update(); return; }
+  camTween = {p0:camera.position.clone(), t0:controls.target.clone(), p1:pos, t1:target, dur, start:performance.now()};
+}
+function updateTween(){
+  if (!camTween) return;
+  const k = Math.min(1, (performance.now() - camTween.start)/1000/camTween.dur);
+  const e = ease(k);
+  camera.position.lerpVectors(camTween.p0, camTween.p1, e);
+  controls.target.lerpVectors(camTween.t0, camTween.t1, e);
+  if (k >= 1) camTween = null;
+}
+controls.addEventListener('start', () => { camTween = null; if (state.mode === 'catalogo') controls.autoRotate = false; });
+let panelOff = {aspect:1};
+function fitTo(obj, factor=1){
+  const box = new THREE.Box3().setFromObject(obj);
+  const s = box.getBoundingSphere(new THREE.Sphere());
+  const vf = THREE.MathUtils.degToRad(camera.fov/2);
+  const hf = Math.atan(Math.tan(vf)*(panelOff.v||1)*panelOff.aspect);
+  const d = s.radius/Math.sin(Math.min(Math.atan(Math.tan(vf)*(panelOff.v||1)),hf))*factor;
+  const pos = s.center.clone().add(V(1.15,0.7,1.5).normalize().multiplyScalar(d));
+  camera.near = d/200; camera.far = d*30; camera.updateProjectionMatrix();
+  scene.fog.near = d*1.4; scene.fog.far = d*3.2;
+  flyTo(pos, s.center, firstFit ? 0 : 0.9);
+  firstFit = false;
+}
+
+/* ---------- tema ---------- */
+function applyTheme(name){
+  state.theme = name; T = THEMES[name];
+  document.documentElement.dataset.theme = name;
+  renderer.setClearColor(T.bg); scene.fog.color.setHex(T.bg);
+  M.fill.color.setHex(T.fill);
+  M.ink.color.setHex(T.ink); M.thin.color.setHex(T.thin); M.dim.color.setHex(T.dim);
+  M.accent.color.setHex(T.accent); M.hidden.color.setHex(T.hidden); M.cable.color.setHex(T.cable);
+  M.tube.color.setHex(T.dim);
+  gridMinorMat.color.setHex(T.gridMinor); gridMajorMat.color.setHex(T.gridMajor);
+  pulseMat.color.setHex(T.accent);
+  document.getElementById('themeBtn').textContent = name === 'plano' ? 'Papel' : 'Plano azul';
+  screens.forEach(f => f());
+  if (asm) asm.lastKey = '';
+}
+
+/* ---------- interfaz ---------- */
+const itemsEl = document.getElementById('items');
+ITEMS.forEach((it,i) => {
+  const li = document.createElement('li'); const b = document.createElement('button');
+  b.dataset.id = it.id; b.innerHTML = `<span>${String(i+1).padStart(2,'0')}</span>`; b.append(it.name);
+  b.addEventListener('click', () => { state.item = it.id; showCatalog(); });
+  li.append(b); itemsEl.append(li);
+});
+function capChips(el, onPick){
+  Object.keys(CAPS).forEach(c => {
+    const b = document.createElement('button'); b.textContent = kgLabel(c); b.dataset.cap = c;
+    b.addEventListener('click', () => { state.cap = +c; syncCaps(); onPick(); });
+    el.append(b);
+  });
+}
+function syncCaps(){ document.querySelectorAll('[data-cap]').forEach(b => b.setAttribute('aria-pressed', +b.dataset.cap === state.cap)); }
+capChips(document.getElementById('capCat'), () => showCatalog());
+capChips(document.getElementById('capAsm'), () => { asm = null; showAssembly(false); });
+syncCaps();
+
+document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+function setMode(m){
+  state.mode = m;
+  document.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-selected', b.dataset.mode === m));
+  document.getElementById('catPanel').hidden = m !== 'catalogo';
+  document.getElementById('asmPanel').hidden = m !== 'conjunto';
+  document.getElementById('hud').hidden = m !== 'conjunto';
+  document.getElementById('cartouche').hidden = m !== 'catalogo';
+  firstFit = true;
+  resize();
+  if (m === 'catalogo'){ asm = null; showCatalog(); } else { showAssembly(); }
+}
+document.querySelectorAll('#typeChips button').forEach(b => b.addEventListener('click', () => {
+  state.type = b.dataset.type;
+  document.querySelectorAll('#typeChips button').forEach(x => x.setAttribute('aria-pressed', x === b));
+  asm = null; showAssembly(false);
+}));
+const playBtn = document.getElementById('playBtn');
+function syncPlay(){ playBtn.textContent = playing ? 'Pausar' : 'Reproducir'; playBtn.setAttribute('aria-pressed', playing); }
+playBtn.addEventListener('click', () => { playing = !playing; syncPlay(); });
+document.getElementById('restartBtn').addEventListener('click', () => { if (!asm) return; showAssembly(false); playing = true; syncPlay(); });
+document.querySelectorAll('#camChips button').forEach(b => b.addEventListener('click', () => setCam(b.dataset.cam)));
+document.getElementById('labelsChk').addEventListener('change', e => { state.labels = e.target.checked; applyLabels(); });
+document.getElementById('themeBtn').addEventListener('click', () => applyTheme(state.theme === 'plano' ? 'papel' : 'plano'));
+syncPlay();
+
+/* ---------- tamaño ---------- */
+function resize(){
+  const w = innerWidth, h = innerHeight;
+  if (w < 50 || h < 50) return;
+  renderer.setSize(w, h, false); labelRenderer.setSize(w, h);
+  lineMats.forEach(m => m.resolution.set(w, h));
+  camera.aspect = w/h;
+  const panel = document.querySelector('.panel').getBoundingClientRect();
+  const mobile = w <= 760;
+  const ox = mobile ? 0 : panel.right/2;
+  const oy = mobile ? -panel.height/2 + 28 : 30;
+  camera.setViewOffset(w, h, -ox, -oy, w, h);
+  panelOff = {aspect: Math.max(0.3, (mobile ? w/(h - panel.height - 56) : (w - panel.right)/(h - 60)) || 1), v: Math.min(1, Math.max(0.3, ((mobile ? h - panel.height - 56 : h - 60)/h) || 1))};
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
+
+/* ---------- arranque ---------- */
+applyTheme('plano');
+resize();
+showCatalog();
+document.fonts && document.fonts.ready.then(() => { screens.forEach(f => f()); if (asm) asm.lastKey = ''; });
+window.__ready = true;
+document.getElementById('loading').remove();
+const clock = new THREE.Clock();
+function frame(){
+  const dt = Math.min(clock.getDelta(), 0.05);
+  if (state.mode === 'conjunto') stepAnim(dt);
+  updateTween();
+  controls.update();
+  renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+frame();
+</script>
+</body>
+</html>

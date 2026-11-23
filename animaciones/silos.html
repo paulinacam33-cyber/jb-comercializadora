@@ -1,0 +1,954 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Silos para forraje JB</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0d2c4f; --panel:#0a223e; --ink:#e8f1ff; --muted:#9dbbe0; --dim:#8db4e2;
+    --rule:rgba(232,241,255,.14); --accent:#ffc857; --chip:rgba(232,241,255,.06); --chip-on:rgba(255,200,87,.14);
+    --sans:'IBM Plex Sans',system-ui,sans-serif; --mono:'IBM Plex Mono',ui-monospace,monospace;
+    --ease-out:cubic-bezier(.23,1,.32,1);
+    color-scheme:dark;
+  }
+  :root[data-theme=papel]{
+    --bg:#f3f0e8; --panel:#fbf9f4; --ink:#1c2431; --muted:#56657a; --dim:#56657a;
+    --rule:rgba(28,36,49,.13); --accent:#c2410c; --chip:rgba(28,36,49,.05); --chip-on:rgba(194,65,12,.1);
+    color-scheme:light;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:var(--sans);overflow:hidden;-webkit-font-smoothing:antialiased}
+  ::selection{background:var(--accent);color:var(--bg)}
+  *{scrollbar-color:var(--rule) transparent;scrollbar-width:thin}
+  #scene{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;outline:none}
+  #labels{position:fixed;inset:0;pointer-events:none}
+  button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button:active{transform:scale(.97)}
+
+  .loading{position:fixed;inset:0;display:grid;place-items:center;z-index:2;color:var(--muted);font-size:14px;pointer-events:none;text-align:center;padding:24px}
+  .loading.error{color:var(--ink)}
+
+  .bar{position:fixed;top:0;left:0;right:0;height:60px;display:flex;align-items:center;gap:14px;padding:0 20px;
+    border-bottom:1px solid var(--rule);background:var(--panel);z-index:5}
+  .brand{display:flex;align-items:center;gap:12px;min-width:0;margin-right:auto}
+  .mark{flex:none;width:34px;height:34px;border:1.5px solid var(--ink);display:grid;place-items:center;font:600 13px var(--mono);letter-spacing:.04em}
+  .brand strong{display:block;font-size:14px;font-weight:600;white-space:nowrap}
+  .brand small{display:block;font-size:12px;color:var(--muted);white-space:nowrap}
+  .seg{display:flex;border:1px solid var(--rule);border-radius:9px;padding:3px;gap:2px;flex:none}
+  .seg button{border:0;background:none;padding:7px 14px;border-radius:6px;font-size:13px;font-weight:500;color:var(--muted);
+    transition:background-color .16s ease,color .16s ease,transform .16s var(--ease-out)}
+  .seg button[aria-selected=true]{background:var(--chip-on);color:var(--ink)}
+  .products{display:grid;grid-template-columns:repeat(2,1fr);gap:2px;margin:0 0 16px;padding:3px;border:1px solid var(--rule);border-radius:9px}
+  .products a{flex:1;text-align:center;padding:7px 6px;border-radius:6px;font-size:13px;font-weight:500;color:var(--muted);text-decoration:none;
+    transition:background-color .16s ease,color .16s ease}
+  .products a[aria-current=page]{background:var(--chip-on);color:var(--ink)}
+  .products a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  @media (hover:hover) and (pointer:fine){ .products a:hover{color:var(--ink)} }  .ghost{border:1px solid var(--rule);background:none;border-radius:8px;padding:8px 12px;font-size:13px;font-weight:500;color:var(--muted);flex:none;
+    transition:color .16s ease,border-color .16s ease,transform .16s var(--ease-out)}
+
+  .panel{position:fixed;top:76px;left:16px;bottom:16px;width:312px;overflow:auto;background:var(--panel);border:1px solid var(--rule);
+    border-radius:12px;padding:18px;z-index:4}
+  .label{font-size:12.5px;font-weight:500;color:var(--muted);margin:0 0 8px}
+  .items{list-style:none;margin:0 0 18px;padding:0;display:grid;gap:2px}
+  .items button{width:100%;display:grid;grid-template-columns:30px 1fr;align-items:center;text-align:left;border:1px solid transparent;background:none;
+    padding:8px 10px;border-radius:7px;font-size:14px;transition:background-color .16s ease,border-color .16s ease,transform .16s var(--ease-out)}
+  .items button span{font:500 12px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+  .items button[aria-current=true]{background:var(--chip-on);border-color:var(--accent)}
+  @media (hover:hover) and (pointer:fine){
+    .ghost:hover{color:var(--ink);border-color:var(--muted)}
+    .items button:hover{background:var(--chip)}
+    .items button[aria-current=true]:hover{background:var(--chip-on)}
+    .chips button:hover{border-color:var(--muted)}
+    .chips button[aria-pressed=true]:hover{border-color:var(--accent)}
+    .seg button:hover{color:var(--ink)}
+  }
+  .info{border-top:1px solid var(--rule);padding-top:16px}
+  .info h2{font-size:19px;font-weight:600;margin:0 0 8px;letter-spacing:-.01em}
+  .info p{font-size:14px;line-height:1.55;color:var(--muted);margin:0 0 14px;text-wrap:pretty}
+  dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:13px}
+  dt{color:var(--muted)} dd{margin:0;font-family:var(--mono);font-size:12.5px;text-align:right}
+  .field{margin-top:18px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chips button{border:1px solid var(--rule);background:var(--chip);border-radius:7px;padding:8px 11px;font-size:13px;font-weight:500;
+    font-variant-numeric:tabular-nums;min-height:36px;min-width:44px;
+    transition:background-color .16s ease,border-color .16s ease,transform .16s var(--ease-out)}
+  .chips button[aria-pressed=true]{background:var(--chip-on);border-color:var(--accent)}
+  .check{display:flex;align-items:center;gap:8px;font-size:13px;margin-top:16px;color:var(--muted)}
+  .check input{accent-color:var(--accent);width:16px;height:16px}
+  .steps{margin:20px 0 0;padding:16px 0 0 18px;border-top:1px solid var(--rule);font-size:13px;line-height:1.5;color:var(--muted);display:grid;gap:6px}
+  .steps li::marker{font-weight:600;color:var(--muted)}
+  .steps li{transition:color .2s ease}
+  .steps li.on{color:var(--ink)}
+  .steps li.on::marker{color:var(--accent)}
+
+  .hud{position:fixed;right:16px;bottom:16px;width:310px;background:var(--panel);border:1px solid var(--rule);border-radius:12px;padding:14px 16px;z-index:4}
+  .hud .read{display:flex;align-items:baseline;justify-content:flex-end;gap:8px;background:#071423;border-radius:8px;padding:10px 14px;margin:6px 0 10px}
+  .hud .val{font:600 40px/1 var(--mono);color:#ffc857;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+  .hud .unit{font:500 14px var(--mono);color:#ffc857;opacity:.75}
+  .lamps{display:flex;gap:14px;font-size:12px;font-weight:500;color:var(--muted)}
+  .lamps span{display:flex;align-items:center;gap:6px}
+  .lamps i{width:8px;height:8px;border-radius:50%;border:1px solid var(--muted);transition:background-color .2s ease,border-color .2s ease}
+  .lamps .on i{background:var(--accent);border-color:var(--accent)}
+  .lamps .on{color:var(--ink)}
+  .msg{font-size:13px;margin:10px 0 0;min-height:1.5em}
+
+  .cartouche{position:fixed;right:16px;bottom:16px;z-index:3;border:1px solid var(--ink);font:500 11px var(--mono);display:grid;grid-template-columns:auto auto;background:var(--bg);opacity:.92}
+  .cartouche div{padding:6px 10px;border-right:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+  .cartouche div:nth-child(2n){border-right:0}
+  .cartouche b{display:block;font-weight:500;font-size:9.5px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin-bottom:2px}
+  .cartouche .wide{grid-column:1/-1;border-right:0;border-bottom:0;color:var(--muted)}
+
+  .dim-label{font:500 11px var(--mono);color:var(--dim);background:var(--bg);padding:1px 5px;white-space:nowrap}
+  .tag{width:0;height:0;position:relative}
+  .tag i{position:absolute;left:-3px;top:-3px;width:6px;height:6px;border-radius:50%;background:var(--accent)}
+  .tag span{position:absolute;left:9px;top:-11px;white-space:nowrap;font:500 11.5px var(--sans);color:var(--ink);background:var(--bg);padding:1px 6px;border:1px solid var(--rule);border-radius:4px}
+  .tag.big span{font-size:12.5px;font-weight:600}
+
+  @media (max-width:760px){
+    .bar{height:56px;padding:0 12px;gap:8px}
+    .brand > div,.mark{display:none}
+    .seg button{padding:7px 8px}
+    .seg button{padding:7px 9px;font-size:12px}
+    .ghost{padding:7px 9px}
+    .panel{top:auto;left:0;right:0;bottom:0;width:auto;max-height:42vh;border-radius:14px 14px 0 0;padding:14px 16px}
+    .items{grid-template-columns:repeat(2,1fr)}
+    .items button{font-size:13px;padding:8px}
+    .hud{top:66px;bottom:auto;right:10px;width:auto;padding:8px 10px}
+    .hud .label,.hud .lamps{display:none}
+    .hud .read{margin:0;padding:6px 10px}
+    .hud .val{font-size:24px}
+    .msg{font-size:11.5px;margin-top:6px;max-width:200px}
+    .cartouche{display:none}
+  }
+  @media (prefers-reduced-motion:reduce){button:active{transform:none}}
+</style>
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+</head>
+<body>
+<canvas id="scene" aria-label="Modelo 3D interactivo. Arrastra para girar, rueda o pellizco para acercar."></canvas>
+<div id="labels"></div>
+<div class="loading" id="loading" role="status">Cargando modelos 3D…</div>
+
+<header class="bar">
+  <div class="brand">
+    <div class="mark">JB</div>
+    <div><strong>Comercializadora JB</strong><small>Silos para forraje · modelos técnicos</small></div>
+  </div>
+  <nav class="seg" role="tablist" aria-label="Vista">
+    <button role="tab" data-mode="catalogo" aria-selected="true">Componentes</button>
+    <button role="tab" data-mode="conjunto" aria-selected="false">Conjunto animado</button>
+  </nav>
+  <button id="themeBtn" class="ghost" type="button">Papel</button>
+</header>
+
+<aside class="panel">
+  <nav class="products" aria-label="Productos"><a href="index.html">Camioneras</a><a href="ganaderas.html">Ganaderas</a><a href="silos.html" aria-current="page">Silos</a><a href="contenedores.html">Contenedores</a></nav>
+  <section id="catPanel">
+    <ol class="items" id="items"></ol>
+    <div class="info">
+      <h2 id="infoTitle"></h2>
+      <p id="infoText"></p>
+      <dl id="infoSpecs"></dl>
+      <div class="field" id="capCatRow">
+        <p class="label">Capacidad</p>
+        <div class="chips" id="capCat"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="asmPanel" hidden>
+    <p class="label">Sistema de pesaje</p>
+    <div class="chips" id="typeChips">
+      <button data-type="con" aria-pressed="true">Con pesaje</button>
+      <button data-type="sin" aria-pressed="false">Sin pesaje</button>
+    </div>
+    <div class="field">
+      <p class="label">Animación</p>
+      <div class="chips">
+        <button id="playBtn" aria-pressed="true">Pausar</button>
+        <button id="restartBtn">Reiniciar</button>
+      </div>
+    </div>
+    <div class="field">
+      <p class="label">Cámara</p>
+      <div class="chips" id="camChips">
+        <button data-cam="general" aria-pressed="true">General</button>
+        <button data-cam="puerta" aria-pressed="false">Inspección</button>
+        <button data-cam="boca" aria-pressed="false">Ensaque</button>
+        <button data-cam="pesaje" aria-pressed="false">Pesaje</button>
+      </div>
+    </div>
+    <label class="check"><input type="checkbox" id="labelsChk" checked> Mostrar nombres de componentes</label>
+    <ol class="steps" id="steps">
+      <li data-s="1">Se abre la puerta de inspección para revisar el interior.</li>
+      <li data-s="2">El forraje entra por arriba y el nivel sube.</li>
+      <li data-s="3">Con el sistema de pesaje, el indicador muestra cuántos kilos hay dentro.</li>
+      <li data-s="4">La boca de ensaque llena los costales y el indicador descuenta lo que sale.</li>
+    </ol>
+  </section></aside>
+
+<div class="hud" id="hud" hidden aria-live="polite">
+  <div id="hudWeigh"><p class="label">Indicador, forraje dentro del silo</p>
+  <div class="read"><span class="val" id="hudVal">0</span><span class="unit">kg</span></div>
+  <div class="lamps">
+    <span id="lEst"><i></i>Estable</span><span id="lCero"><i></i>Cero</span><span id="lMov"><i></i>Movimiento</span>
+  </div></div>
+  <p class="label" id="hudNo" hidden>Sin sistema de pesaje: el nivel se revisa por la puerta de inspección.</p>
+  <p class="msg" id="hudMsg"></p>
+</div>
+
+<div class="cartouche" id="cartouche">
+  <div><b>Cliente</b>Comercializadora JB</div>
+  <div><b>Hoja</b><span id="cSheet">01 / 04</span></div>
+  <div><b>Plano</b><span id="cName">Silo para forraje</span></div>
+  <div><b>Escala</b>Ilustrativa</div>
+  <div class="wide">Medidas aproximadas, solo para presentación</div>
+</div>
+
+<script>
+  setTimeout(function(){
+    if (window.__ready) return;
+    var el = document.getElementById('loading');
+    el.className = 'loading error';
+    el.textContent = 'No se pudo cargar el motor 3D. Revisa la conexión a internet y vuelve a abrir la página.';
+  }, 15000);
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
+import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
+import { Line2 } from 'three/addons/lines/Line2.js';
+import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
+import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const V = (x=0,y=0,z=0) => new THREE.Vector3(x,y,z);
+
+/* ---------- temas ---------- */
+const THEMES = {
+  plano:{bg:0x0d2c4f, fill:0x0f3157, ink:0xe8f1ff, thin:0xb9d0ee, dim:0x8db4e2, accent:0xffc857, hidden:0x7ea6d6,
+    gridMinor:0x15406b, gridMajor:0x245a8e, cable:0xa9c4e6,
+    scr:{bg:'#0b2340', fg:'#e8f1ff', muted:'#8db4e2', accent:'#ffc857', rule:'rgba(232,241,255,.16)'}},
+  papel:{bg:0xf3f0e8, fill:0xfbf9f4, ink:0x1c2431, thin:0x3d4a5c, dim:0x5d6c80, accent:0xc2410c, hidden:0x8a96a6,
+    gridMinor:0xe6dfd1, gridMajor:0xd3c9b5, cable:0x4b5a70,
+    scr:{bg:'#ffffff', fg:'#1c2431', muted:'#5d6c80', accent:'#c2410c', rule:'rgba(28,36,49,.12)'}}
+};
+let T = THEMES.plano;
+const LCD = '#ffc857';
+
+/* ---------- motor ---------- */
+const canvas = document.getElementById('scene');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const labelRenderer = new CSS2DRenderer({element: document.getElementById('labels')});
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x0d2c4f, 40, 120);
+const camera = new THREE.PerspectiveCamera(32, 1, 0.02, 600);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.autoRotateSpeed = 0.7;
+
+const lineMats = [];
+function LM(o){ const m = new LineMaterial(o); lineMats.push(m); return m; }
+const M = {
+  fill: new THREE.MeshBasicMaterial({side:THREE.DoubleSide, polygonOffset:true, polygonOffsetFactor:1, polygonOffsetUnits:1, fog:false}),
+  ink: LM({linewidth:1.5}),
+  thin: LM({linewidth:0.9}),
+  dim: LM({linewidth:0.9}),
+  accent: LM({linewidth:2.3}),
+  hidden: LM({linewidth:0.9, dashed:true, dashSize:0.22, gapSize:0.14}),
+  cable: LM({linewidth:1.3}),
+};
+const gridMinorMat = new THREE.LineBasicMaterial();
+const gridMajorMat = new THREE.LineBasicMaterial();
+const pulseMat = new THREE.MeshBasicMaterial({fog:false});
+
+/* ---------- utilidades de dibujo ---------- */
+function edgesOf(geo, th=20){ return new LineSegmentsGeometry().fromEdgesGeometry(new THREE.EdgesGeometry(geo, th)); }
+function solid(geo, o={}){
+  const g = new THREE.Group();
+  if (o.fill !== false){ const mesh = new THREE.Mesh(geo, M.fill); g.add(mesh); }
+  const ls = new LineSegments2(edgesOf(geo, o.th ?? 20), M[o.line || 'ink']);
+  if (ls.material.dashed) ls.computeLineDistances();
+  g.add(ls);
+  return g;
+}
+function place(o,x=0,y=0,z=0){ o.position.set(x,y,z); return o; }
+function B(w,h,d,x,y,z,o){ return place(solid(new THREE.BoxGeometry(w,h,d),o),x,y,z); }
+function C(r,h,x,y,z,o={},axis='y',seg=28){
+  const geo = new THREE.CylinderGeometry(o.r2 ?? r, r, h, seg);
+  if (axis==='x') geo.rotateZ(Math.PI/2);
+  if (axis==='z') geo.rotateX(Math.PI/2);
+  return place(solid(geo,o),x,y,z);
+}
+function segs(pts, mat='thin'){
+  const arr = []; pts.forEach(p => arr.push(p[0],p[1],p[2]));
+  const g = new LineSegmentsGeometry(); g.setPositions(arr);
+  const ls = new LineSegments2(g, M[mat]); if (M[mat].dashed) ls.computeLineDistances();
+  return ls;
+}
+function poly(pts, mat='cable'){
+  const arr = []; pts.forEach(p => arr.push(p.x,p.y,p.z));
+  const g = new LineGeometry(); g.setPositions(arr);
+  const l = new Line2(g, M[mat]); l.computeLineDistances(); return l;
+}
+function rectXZ(x0,z0,x1,z1,y){ return [[x0,y,z0],[x1,y,z0],[x1,y,z0],[x1,y,z1],[x1,y,z1],[x0,y,z1],[x0,y,z1],[x0,y,z0]]; }
+function rectXY(x0,y0,x1,y1,z){ return [[x0,y0,z],[x1,y0,z],[x1,y0,z],[x1,y1,z],[x1,y1,z],[x0,y1,z],[x0,y1,z],[x0,y0,z]]; }
+function tag(text, pos, big=false){
+  const el = document.createElement('div'); el.className = 'tag' + (big ? ' big' : '');
+  el.innerHTML = '<i></i><span></span>'; el.querySelector('span').textContent = text;
+  const o = new CSS2DObject(el); o.position.copy(pos); return o;
+}
+function dimension(a,b,off,text,tick){
+  const g = new THREE.Group();
+  const n = off.clone().normalize();
+  const a2 = a.clone().add(off), b2 = b.clone().add(off);
+  const over = n.clone().multiplyScalar(tick*0.9), gap = n.clone().multiplyScalar(tick*0.4);
+  const dir = b2.clone().sub(a2).normalize();
+  const t = dir.clone().add(n).normalize().multiplyScalar(tick*0.7);
+  const P = [a.clone().add(gap), a2.clone().add(over), b.clone().add(gap), b2.clone().add(over), a2, b2,
+             a2.clone().sub(t), a2.clone().add(t), b2.clone().sub(t), b2.clone().add(t)];
+  g.add(segs(P.map(v => [v.x,v.y,v.z]), 'dim'));
+  const el = document.createElement('div'); el.className = 'dim-label'; el.textContent = text;
+  const lab = new CSS2DObject(el);
+  lab.position.copy(a2.clone().add(b2).multiplyScalar(0.5));
+  g.add(lab);
+  return g;
+}
+function makeGrid(size, step, majorEvery=5){
+  const minor = [], major = []; const n = Math.round(size/step), h = size/2;
+  for (let i=0;i<=n;i++){
+    const p = -h + i*step; const arr = (i % majorEvery === 0) ? major : minor;
+    arr.push(-h,0,p, h,0,p, p,0,-h, p,0,h);
+  }
+  const g = new THREE.Group();
+  [[minor,gridMinorMat],[major,gridMajorMat]].forEach(([a,m]) => {
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(a,3));
+    g.add(new THREE.LineSegments(geo, m));
+  });
+  g.position.y = -0.002;
+  return g;
+}
+function makeScreen(w,h,pw,ph){
+  const c = document.createElement('canvas'); c.width = pw; c.height = ph;
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+  const mat = new THREE.MeshBasicMaterial({map:tex, fog:false, polygonOffset:true, polygonOffsetFactor:-1, polygonOffsetUnits:-4});
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w,h), mat); mesh.userData.own = true;
+  return {c, ctx:c.getContext('2d'), tex, mesh};
+}
+const fmt = v => Math.round(v).toLocaleString('es-MX');
+
+/* ---------- pantallas ---------- */
+function drawIndicator(s, val, f={}){
+  const {ctx, c} = s; const W = c.width, H = c.height;
+  ctx.fillStyle = '#071423'; ctx.fillRect(0,0,W,H);
+  ctx.textBaseline = 'middle';
+  ctx.font = '600 86px "IBM Plex Mono", monospace'; ctx.textAlign = 'right';
+  ctx.fillStyle = 'rgba(255,200,87,.07)'; ctx.fillText('888888', W-70, H/2+4);
+  ctx.fillStyle = LCD; ctx.fillText((typeof val === 'string' ? val : String(Math.round(val))), W-70, H/2+4);
+  ctx.font = '500 26px "IBM Plex Mono", monospace'; ctx.textAlign = 'left';
+  ctx.globalAlpha = .8; ctx.fillText('kg', W-62, H/2+20); ctx.globalAlpha = 1;
+  const lamps = [['EST', f.stable], ['CERO', f.zero], ['MOV', f.moving]];
+  ctx.font = '500 17px "IBM Plex Mono", monospace';
+  lamps.forEach(([t,on],i) => {
+    const y = 28 + i*36;
+    ctx.beginPath(); ctx.arc(22,y,6,0,Math.PI*2);
+    ctx.fillStyle = on ? LCD : 'rgba(255,200,87,.15)'; ctx.fill();
+    ctx.fillStyle = on ? LCD : 'rgba(255,200,87,.3)'; ctx.fillText(t, 36, y+1);
+  });
+  s.tex.needsUpdate = true;
+}
+function drawLaptop(s, d){
+  const {ctx, c} = s; const W = c.width, H = c.height, S = T.scr;
+  ctx.fillStyle = S.bg; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle = S.rule; ctx.fillRect(0,46,W,1);
+  ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  ctx.fillStyle = S.fg; ctx.font = '600 20px "IBM Plex Sans", sans-serif'; ctx.fillText('Software de pesaje', 22, 24);
+  ctx.textAlign = 'right'; ctx.fillStyle = S.muted; ctx.font = '500 15px "IBM Plex Mono", monospace';
+  ctx.fillText('Báscula 1 · en línea', W-22, 24);
+  ctx.textAlign = 'left'; ctx.fillStyle = S.muted; ctx.font = '500 14px "IBM Plex Mono", monospace';
+  ctx.fillText('PESO ACTUAL', 22, 74);
+  ctx.fillStyle = S.fg; ctx.font = '600 58px "IBM Plex Mono", monospace';
+  ctx.fillText(fmt(d.value) + ' kg', 22, 122);
+  const chip = d.stable ? 'ESTABLE' : (d.moving ? 'EN MOVIMIENTO' : 'EN CERO');
+  ctx.font = '600 14px "IBM Plex Mono", monospace';
+  const cw = ctx.measureText(chip).width + 22;
+  ctx.fillStyle = d.stable ? S.accent : S.rule; ctx.fillRect(W-22-cw, 108, cw, 28);
+  ctx.fillStyle = d.stable ? S.bg : S.fg; ctx.textAlign = 'center'; ctx.fillText(chip, W-22-cw/2, 123);
+  ctx.textAlign = 'left'; ctx.fillStyle = S.muted; ctx.font = '500 14px "IBM Plex Mono", monospace';
+  ctx.fillText('BOLETAS DE HOY', 22, 178);
+  ctx.fillStyle = S.rule; ctx.fillRect(22,196,W-44,1);
+  const cols = [22, 170, 300];
+  ctx.fillText('Boleta', cols[0], 214); ctx.fillText('Hora', cols[1], 214);
+  ctx.textAlign = 'right'; ctx.fillText('Peso bruto', W-22, 214); ctx.textAlign = 'left';
+  if (!d.tickets.length){ ctx.fillStyle = S.muted; ctx.font = '400 15px "IBM Plex Sans", sans-serif'; ctx.fillText('Las boletas aparecen aquí al registrar cada pesada.', 22, 250); }
+  d.tickets.slice(0,4).forEach((t,i) => {
+    const y = 250 + i*34;
+    ctx.fillStyle = i === 0 && d.fresh ? S.accent : S.fg; ctx.font = '500 16px "IBM Plex Mono", monospace';
+    ctx.fillText('#' + String(t.n).padStart(4,'0'), cols[0], y); ctx.fillText(t.hora, cols[1], y);
+    ctx.textAlign = 'right'; ctx.fillText(fmt(t.peso) + ' kg', W-22, y); ctx.textAlign = 'left';
+    ctx.fillStyle = S.rule; ctx.fillRect(22, y+17, W-44, 1);
+  });
+  s.tex.needsUpdate = true;
+}
+function drawUPS(s){
+  const {ctx, c} = s; const W = c.width, H = c.height;
+  ctx.fillStyle = '#071423'; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle = LCD; ctx.lineWidth = 4; ctx.strokeRect(20,30,130,56); ctx.fillStyle = LCD; ctx.fillRect(150,46,10,24);
+  for (let i=0;i<4;i++) ctx.fillRect(30+i*30, 40, 22, 36);
+  ctx.font = '600 34px "IBM Plex Mono", monospace'; ctx.textBaseline = 'middle'; ctx.fillText('100%', 172, 60);
+  s.tex.needsUpdate = true;
+}
+
+/* ---------- componentes ---------- */
+M.pipe = LM({linewidth:0.11, worldUnits:true});
+M.tube = LM({linewidth:0.035, worldUnits:true});
+const contentMat = new THREE.MeshBasicMaterial({transparent:true, opacity:0.16, depthWrite:false, side:THREE.DoubleSide, fog:false});
+function tubes(pairs, mat='tube'){
+  const arr = []; pairs.forEach(([a,b]) => arr.push(a.x,a.y,a.z,b.x,b.y,b.z));
+  const g = new LineSegmentsGeometry(); g.setPositions(arr);
+  return new LineSegments2(g, M[mat]);
+}
+function ring(r, y, n=72){
+  const p = [];
+  for (let i=0;i<n;i++){ const a0 = i/n*Math.PI*2, a1 = (i+1)/n*Math.PI*2; p.push([Math.cos(a0)*r,y,Math.sin(a0)*r],[Math.cos(a1)*r,y,Math.sin(a1)*r]); }
+  return p;
+}
+function buildCell(){
+  const g = new THREE.Group();
+  g.add(B(0.18,0.025,0.18, 0,0.0125,0));
+  [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(([a,b]) => g.add(C(0.011,0.027, a*0.065,0.0125,b*0.065,{line:'thin'})));
+  g.add(C(0.05,0.12, 0,0.085,0));
+  g.add(C(0.054,0.008, 0,0.12,0,{line:'thin'}));
+  g.add(C(0.022,0.03, 0,0.16,0));
+  g.add(B(0.14,0.02,0.14, 0,0.185,0));
+  g.add(C(0.011,0.03, 0,0.07,0.064,{},'z'));
+  return g;
+}
+function buildJunctionBox(){
+  const g = new THREE.Group();
+  g.add(B(0.16,0.12,0.07, 0,0.06,0));
+  g.add(B(0.168,0.128,0.01, 0,0.06,0.04));
+  [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(([a,b]) => g.add(C(0.006,0.004, a*0.068,0.06+b*0.05,0.047,{line:'thin'},'z',16)));
+  for (let i=0;i<5;i++) g.add(C(0.008,0.022, -0.056+i*0.028,-0.011,0,{line:'thin'},'y',16));
+  return g;
+}
+function buildIndicator(){
+  const g = new THREE.Group();
+  g.add(B(0.36,0.01,0.16, 0,0.005,0));
+  g.add(B(0.012,0.17,0.04, -0.176,0.09,0)); g.add(B(0.012,0.17,0.04, 0.176,0.09,0));
+  g.add(C(0.022,0.016, -0.19,0.15,0,{},'x')); g.add(C(0.022,0.016, 0.19,0.15,0,{},'x'));
+  const body = new THREE.Group(); body.position.set(0,0.15,0); body.rotation.x = -0.22; g.add(body);
+  body.add(B(0.33,0.19,0.11, 0,0,0));
+  body.add(B(0.25,0.068,0.006, 0,0.043,0.058));
+  const scr = makeScreen(0.228,0.057,512,128); scr.mesh.position.set(0,0.043,0.0612); body.add(scr.mesh);
+  for (let r=0;r<2;r++) for (let c=0;c<6;c++) body.add(B(0.03,0.018,0.006, -0.1+c*0.04,-0.03-r*0.03,0.058,{line:'thin'}));
+  drawIndicator(scr, '0', {zero:true, stable:true});
+  return {group:g, screen:scr};
+}
+function buildDoor(){
+  // puerta de inspección: marco fijo y tapa con bisagra en el borde izquierdo (x = -0.3)
+  const g = new THREE.Group();
+  g.add(segs([...rectXY(-0.36,-0.46,0.36,0.46,0), ...rectXY(-0.33,-0.43,0.33,0.43,0)],'ink'));
+  const pivot = new THREE.Group(); pivot.position.set(-0.3,0,0.025); g.add(pivot);
+  pivot.add(B(0.6,0.8,0.035, 0.3,0,0));
+  pivot.add(B(0.03,0.16,0.04, 0.52,0,0.035,{line:'thin'}));
+  [-0.28,0.28].forEach(y => g.add(C(0.022,0.1, -0.3,y,0.025,{line:'thin'},'y',16)));
+  const bolts = []; for (let i=0;i<4;i++){ const y = -0.3 + i*0.2; bolts.push(...rectXY(0.42,y-0.012,0.444,y+0.012,0.045)); }
+  pivot.add(segs(bolts,'thin'));
+  return {group:g, pivot};
+}
+function buildBagger(){
+  // boca de ensaque: compuerta deslizable, tubo de descarga y abrazadera para el costal (origen = salida de la tolva)
+  const g = new THREE.Group();
+  g.add(B(0.46,0.07,0.46, 0,-0.035,0));
+  const gate = B(0.36,0.016,0.4, 0,-0.035,0,{line:'thin'}); g.add(gate);
+  g.add(B(0.06,0.05,0.06, 0.26,-0.035,0,{line:'thin'}));
+  g.add(C(0.12,0.38, 0,-0.26,0));
+  g.add(C(0.15,0.045, 0,-0.4,0));
+  g.add(C(0.02,0.08, 0.17,-0.4,0,{line:'thin'},'x',12));
+  return {group:g, gate};
+}
+const SILO = {R:1.5, bodyBot:3.2, bodyTop:7.2, apex:8.1, hopBot:1.45, out:0.16};
+const radiusAt = y => {
+  const {R, bodyBot, hopBot, out} = SILO;
+  if (y >= bodyBot) return R;
+  return out + (R-out)*(y-hopBot)/(bodyBot-hopBot);
+};
+function buildSilo(weigh){
+  const {R, bodyBot, bodyTop, apex, hopBot, out} = SILO;
+  const g = new THREE.Group();
+  // casco en vista de rayos X: solo aristas para ver el forraje dentro
+  const shell = [];
+  for (let y=bodyBot; y<=bodyTop+0.001; y+=0.8) shell.push(...ring(R,y));
+  for (let k=0;k<16;k++){ const a = k/16*Math.PI*2, c = Math.cos(a), s = Math.sin(a);
+    shell.push([c*R,bodyBot,s*R],[c*R,bodyTop,s*R]);
+    shell.push([c*R,bodyTop,s*R],[0,apex,0]);
+    shell.push([c*R,bodyBot,s*R],[c*out,hopBot,s*out]);
+  }
+  shell.push(...ring(out,hopBot,24), ...ring(radiusAt(2.3),2.3,56));
+  g.add(segs(shell,'ink'));
+  // patas, placas y contravientos
+  const base = weigh ? 0.215 : 0, legs = [], braces = [];
+  [Math.PI/4, 3*Math.PI/4, 5*Math.PI/4, 7*Math.PI/4].forEach(a => {
+    const x = Math.cos(a)*(R+0.07), z = Math.sin(a)*(R+0.07);
+    g.add(B(0.14, 4.0-base, 0.14, x, base+(4.0-base)/2, z));
+    g.add(B(0.32,0.02,0.32, x, base+0.01, z,{line:'thin'}));
+    legs.push(V(x,0,z));
+  });
+  for (let i=0;i<4;i++){ const a = legs[i], b = legs[(i+1)%4];
+    braces.push([a.x,0.7,a.z],[b.x,2.6,b.z],[a.x,2.6,a.z],[b.x,0.7,b.z],[a.x,2.6,a.z],[b.x,2.6,b.z]); }
+  g.add(segs(braces,'thin'));
+  const cells = [], cellPos = [];
+  if (weigh) legs.forEach(l => {
+    g.add(B(0.4,0.02,0.4, l.x,0.01,l.z,{line:'thin'}));
+    const c = buildCell(); c.position.set(l.x,0.02,l.z); g.add(c); cells.push(c);
+    cellPos.push(V(l.x, 0.09, l.z+0.08));
+  });
+  // puerta de inspección lateral (orientada hacia +z, un poco a la derecha)
+  const th = 0.45, door = buildDoor();
+  door.group.position.set(Math.sin(th)*(R+0.01), 4.1, Math.cos(th)*(R+0.01)); door.group.rotation.y = th; g.add(door.group);
+  // puerta de inspección del techo
+  const rr = 0.8, ry = bodyTop + (apex-bodyTop)*(1-rr/R), slope = Math.atan((apex-bodyTop)/R);
+  const lid = new THREE.Group(); lid.position.set(Math.sin(th)*rr, ry, Math.cos(th)*rr); lid.rotation.y = th; g.add(lid);
+  const lidIn = B(0.5,0.05,0.5, 0,0.03,0); lidIn.rotation.x = slope; lid.add(lidIn);
+  // boca de ensaque
+  const bag = buildBagger(); bag.group.position.set(0,hopBot,0); g.add(bag.group);
+  // tubo de llenado
+  const fill = [V(-2.25,0.25,-0.7), V(-2.25,8.75,-0.7), V(-0.32,8.75,-0.24), V(-0.32,7.9,-0.24)];
+  g.add(tubes([[fill[0],fill[1]],[fill[1],fill[2]],[fill[2],fill[3]]],'pipe'));
+  g.add(B(0.3,0.25,0.3, -2.25,0.125,-0.7,{line:'thin'}));
+  // contenido
+  const content = new THREE.Mesh(new THREE.LatheGeometry([new THREE.Vector2(0,hopBot), new THREE.Vector2(out,hopBot)], 8), contentMat);
+  content.visible = false; g.add(content);
+  const levelRing = segs(ring(1,0,72),'accent'); levelRing.visible = false; g.add(levelRing);
+  let lastY = -1;
+  const setLevel = l => {
+    const y = hopBot + l*(bodyTop-hopBot);
+    content.visible = levelRing.visible = l > 0.002;
+    if (!content.visible || Math.abs(y-lastY) < 0.004) return;
+    lastY = y;
+    const pts = [V(0,hopBot,0), V(out,hopBot,0)];
+    if (y > bodyBot) pts.push(V(R,bodyBot,0), V(R,y,0)); else pts.push(V(radiusAt(y),y,0));
+    pts.push(V(0,y,0));
+    content.geometry.dispose();
+    content.geometry = new THREE.LatheGeometry(pts.map(p => new THREE.Vector2(p.x,p.y)), 48);
+    const r = radiusAt(y); levelRing.position.y = y; levelRing.scale.set(r*0.995,1,r*0.995);
+  };
+  return {group:g, legs, cells, cellPos, door, lid, bag, fill, setLevel, base};
+}
+
+/* ---------- catálogo ---------- */
+const ITEMS = [
+  {id:'silo', name:'Silo para forraje', text:'Guarda el forraje protegido del agua y la intemperie. Se llena por arriba y descarga por la tolva inferior directo a la boca de ensaque.',
+    specs:[['Uso','Almacenamiento de forraje'],['Inspección','Puertas en cuerpo y techo'],['Descarga','Boca de ensaque'],['Pesaje','Opcional']]},
+  {id:'puerta', name:'Puerta de inspección', text:'Permite revisar el nivel y el estado del forraje, y entrar a limpiar el silo cuando hace falta.',
+    specs:[['Ubicación','Cuerpo y techo del silo'],['Uso','Revisión y limpieza']],
+    tags:[['Bisagras',V(-0.3,0.28,0.05)],['Manija',V(0.22,0,0.07)],['Marco',V(0.36,-0.46,0)]]},
+  {id:'boca', name:'Boca de ensaque', text:'Salida en la parte baja de la tolva para llenar costales directo del silo. La compuerta abre y corta el paso del forraje.',
+    specs:[['Ubicación','Salida de la tolva'],['Uso','Llenado de costales']],
+    tags:[['Compuerta',V(0.26,-0.035,0.2)],['Tubo de descarga',V(0.12,-0.26,0)],['Abrazadera del costal',V(0.15,-0.4,0.05)]]},
+  {id:'pesaje', name:'Sistema de pesaje (opcional)', text:'Una celda de carga bajo cada pata, una caja suma y un indicador. Así se sabe cuántos kilos de forraje hay dentro y cuánto sale en cada costal.',
+    specs:[['Celdas','Una por pata'],['Incluye','Caja suma e indicador'],['Muestra','Kilos dentro del silo']]},
+];
+
+const state = {mode:'catalogo', item:'silo', weigh:true, theme:'plano', labels:true, cam:'general'};
+let root = null, asm = null, screens = [], firstFit = true;
+
+function disposeTree(o){
+  o.traverse(c => {
+    if (c.isCSS2DObject && c.element.parentNode) c.element.remove();
+    if (c.geometry) c.geometry.dispose();
+    if (c.userData.own){ c.material.map && c.material.map.dispose(); c.material.dispose(); }
+  });
+}
+function setRoot(g){
+  if (root){ scene.remove(root); disposeTree(root); }
+  root = g; scene.add(g);
+}
+
+function smallDims(g, model){
+  const box = new THREE.Box3().setFromObject(model);
+  const sz = box.getSize(V()); const mx = Math.max(sz.x,sz.y,sz.z);
+  const k = mx*0.22, tk = mx*0.035, mm = v => `${Math.round(v*1000/5)*5} mm`;
+  const {min, max} = box;
+  g.add(dimension(V(min.x,min.y,max.z), V(max.x,min.y,max.z), V(0,0,k), mm(sz.x), tk));
+  g.add(dimension(V(min.x,min.y,max.z), V(min.x,max.y,max.z), V(-k*0.8,0,k*0.4), mm(sz.y), tk));
+  g.add(dimension(V(max.x,min.y,min.z), V(max.x,min.y,max.z), V(k,0,0), mm(sz.z), tk));
+  g.position.y = -min.y;
+  const step = mx < 0.5 ? 0.05 : 0.1;
+  const grid = makeGrid(Math.ceil(mx*5/step/5)*step*5, step); grid.position.y = min.y - 0.002; g.add(grid);
+}
+function buildCatalogItem(id){
+  const g = new THREE.Group(); let fit = null; screens = [];
+  const it = ITEMS.find(i => i.id === id);
+  if (id === 'silo'){
+    const S = buildSilo(false); g.add(S.group); fit = S.group;
+    S.door.pivot.rotation.y = -0.9;
+    const {R, bodyTop, apex, hopBot} = SILO;
+    g.add(dimension(V(-R,0,R+0.2), V(R,0,R+0.2), V(0,0,0.8), `Ø ${(2*R).toFixed(2)} m`, 0.12));
+    g.add(dimension(V(R+0.3,0,0), V(R+0.3,apex,0), V(0.9,0,0), `${apex.toFixed(2)} m`, 0.12));
+    g.add(tag('Techo cónico', V(-0.75,bodyTop+0.45,-0.4), true));
+    g.add(tag('Puerta de inspección', S.door.group.position.clone().add(V(0.25,0.45,0.1)), true));
+    g.add(tag('Puerta de inspección del techo', S.lid.position.clone().add(V(0,0.2,0)), true));
+    g.add(tag('Tolva', V(-0.9,2.4,0.4), true));
+    g.add(tag('Boca de ensaque', V(0.15,hopBot-0.4,0), true));
+    g.add(tag('Llenado', V(-2.25,5.5,-0.7), true));
+    g.add(makeGrid(16, 0.5, 4));
+  } else if (id === 'puerta'){
+    const d = buildDoor(); d.pivot.rotation.y = -0.7; g.add(d.group); fit = d.group;
+    it.tags.forEach(([t,p]) => d.group.add(tag(t,p)));
+    smallDims(g, d.group);
+  } else if (id === 'boca'){
+    const b = buildBagger(); g.add(b.group); fit = b.group;
+    it.tags.forEach(([t,p]) => b.group.add(tag(t,p)));
+    smallDims(g, b.group);
+  } else {
+    const m = new THREE.Group();
+    m.add(B(0.4,0.02,0.4, 0,0.01,0,{line:'thin'}));
+    const c = buildCell(); c.position.y = 0.02; m.add(c);
+    m.add(B(0.32,0.02,0.32, 0,0.225,0,{line:'thin'}));
+    m.add(B(0.14,0.55,0.14, 0,0.51,0));
+    const jb = buildJunctionBox(); jb.position.set(0.55,0.3,0); m.add(jb);
+    m.add(B(0.03,0.3,0.03, 0.55,0.15,-0.05,{line:'thin'}));
+    const ind = buildIndicator(); ind.group.position.set(1.15,0,0); m.add(ind.group);
+    screens.push(() => drawIndicator(ind.screen, '0', {zero:true, stable:true}));
+    m.add(tag('Celda de carga bajo la pata', V(0,0.14,0.08)));
+    m.add(tag('Caja suma', V(0.63,0.42,0.04)));
+    m.add(tag('Indicador', V(1.25,0.26,0.06)));
+    m.add(poly([V(0,0.09,0.08), V(0,0.01,0.25), V(0.55,0.01,0.25), V(0.55,0.29,0.0)]));
+    m.add(poly([V(0.57,0.29,0), V(0.57,0.01,0.12), V(1.1,0.01,0.12), V(1.1,0.12,-0.05)]));
+    g.add(m); fit = m;
+    smallDims(g, m);
+  }
+  return {group:g, fit, specs:it.specs};
+}
+
+function showCatalog(){
+  const {group, fit, specs} = buildCatalogItem(state.item);
+  setRoot(group);
+  const it = ITEMS.find(i => i.id === state.item);
+  const idx = ITEMS.indexOf(it);
+  document.getElementById('infoTitle').textContent = it.name;
+  document.getElementById('infoText').textContent = it.text;
+  const dl = document.getElementById('infoSpecs'); dl.innerHTML = '';
+  specs.forEach(([a,b]) => { const dt = document.createElement('dt'); dt.textContent = a; const dd = document.createElement('dd'); dd.textContent = b; dl.append(dt,dd); });
+  document.getElementById('cName').textContent = it.name;
+  document.getElementById('cSheet').textContent = `${String(idx+1).padStart(2,'0')} / ${String(ITEMS.length).padStart(2,'0')}`;
+  document.querySelectorAll('#items button').forEach(b => b.setAttribute('aria-current', b.dataset.id === state.item));
+  controls.maxPolarAngle = Math.PI*0.92;
+  controls.autoRotate = !REDUCED;
+  group.updateMatrixWorld(true);
+  fitTo(fit, state.item === 'silo' ? 1.0 : 1.55);
+}
+
+/* ---------- conjunto ---------- */
+const KG_FULL = 18000, BAG = 40, LEVEL = 0.78;
+function buildAssembly(){
+  const g = new THREE.Group();
+  const S = buildSilo(state.weigh); g.add(S.group);
+  const leg = S.legs[0];
+  const parts = {S};
+  const labels = new THREE.Group();
+  labels.add(tag('Silo para forraje', V(-0.6, SILO.apex+0.25, 0), true));
+  labels.add(tag('Puerta de inspección', S.door.group.position.clone().add(V(0.3,0.55,0.1)), true));
+  labels.add(tag('Boca de ensaque', V(0.18, SILO.hopBot-0.4, 0), true));
+  labels.add(tag('Llenado de forraje', V(-2.25, 6.2, -0.7), true));
+  const paths = [];
+  const mkPath = pts => { const cum=[0]; for (let i=1;i<pts.length;i++) cum.push(cum[i-1]+pts[i].distanceTo(pts[i-1])); return {pts, cum, total:cum[cum.length-1]}; };
+  if (state.weigh){
+    const zBox = leg.z + 0.12;
+    const jb = buildJunctionBox(); jb.position.set(leg.x, 0.9, zBox); g.add(jb);
+    const ix = 2.9, iz = 2.2;
+    g.add(tubes([[V(ix,0,iz), V(ix,1.06,iz)]]));
+    g.add(B(0.3,0.02,0.04, ix,0.01,iz,{line:'thin'}));
+    g.add(B(0.42,0.02,0.22, ix,1.07,iz));
+    const ind = buildIndicator(); ind.group.position.set(ix,1.08,iz+0.02); g.add(ind.group);
+    parts.ind = ind;
+    S.cellPos.forEach((c,i) => {
+      const bx = leg.x - 0.056 + i*0.028;
+      const pts = [c.clone(), V(c.x,0.015,c.z), V(c.x,0.015,c.z+0.25), V(bx,0.015,c.z+0.25 > zBox+0.25 ? c.z+0.25 : zBox+0.25), V(bx,0.015,zBox), V(bx,0.89,zBox)];
+      g.add(poly(pts)); paths.push({...mkPath(pts), speed:2.2, r:0.025});
+    });
+    const main = [V(leg.x+0.056,0.89,zBox), V(leg.x+0.056,0.015,zBox+0.1), V(ix-0.05,0.015,iz), V(ix-0.05,1.07,iz), V(ix-0.05,1.1,iz-0.05)];
+    g.add(poly(main)); paths.push({...mkPath(main), speed:1.4, r:0.02});
+    labels.add(tag('Celdas de carga', S.cellPos[1].clone().add(V(0,0.1,0)), true));
+    labels.add(tag('Caja suma', V(leg.x+0.1, 1.05, zBox), true));
+    labels.add(tag('Indicador', V(ix+0.2, 1.36, iz), true));
+  }
+  const pulses = [];
+  paths.forEach(p => { for (let k=0;k<2;k++){ const m = new THREE.Mesh(new THREE.SphereGeometry(p.r,10,8), pulseMat); m.visible = false; g.add(m); pulses.push({mesh:m, path:p, off:k*p.total/2}); } });
+  const feed = mkPath(S.fill);
+  const feedP = []; for (let k=0;k<6;k++){ const m = new THREE.Mesh(new THREE.SphereGeometry(0.07,10,8), pulseMat); m.visible = false; g.add(m); feedP.push({mesh:m, off:k*feed.total/6}); }
+  const dropP = []; for (let k=0;k<3;k++){ const m = new THREE.Mesh(new THREE.SphereGeometry(0.03,8,6), pulseMat); m.visible = false; g.add(m); dropP.push({mesh:m, off:k/3}); }
+  // costal
+  const sack = new THREE.Group(); g.add(sack);
+  const sackBody = new THREE.Group(); sack.add(sackBody);
+  sackBody.add(B(0.46,0.7,0.34, 0,-0.35,0));
+  sackBody.add(segs([[-0.23,-0.12,0.171],[0.23,-0.12,0.171]],'thin'));
+  const cellLines = [];
+  S.cells.forEach(c => c.traverse(o => { if (o.isLineSegments2 && o.material === M.ink) cellLines.push(o); }));
+  g.add(labels);
+  g.add(makeGrid(24, 0.5, 4));
+  screens = [];
+  asm = {group:g, ...parts, labels, paths, pulses, feed, feedP, dropP, sack, sackBody, cellLines,
+         t:0, phase:'inspect', phaseT:0, level:0, bagKg:0, bags:0, door:0, gate:0, raw:0, disp:0, shown:-1, stableT:0, stable:false, moving:false, lastDraw:0, lastKey:''};
+  S.setLevel(0); sack.visible = false;
+  return g;
+}
+
+function showAssembly(resetCam=true){
+  setRoot(buildAssembly());
+  controls.autoRotate = false;
+  controls.maxPolarAngle = Math.PI*0.49;
+  document.getElementById('hudWeigh').hidden = !state.weigh;
+  document.getElementById('hudNo').hidden = state.weigh;
+  applyLabels();
+  if (resetCam) setCam(state.cam, firstFit ? 0 : 1.1);
+  firstFit = false;
+}
+
+function camPreset(name){
+  if (name === 'boca') return [V(0.35,1.45,3.1), V(0.2,0.95,0)];
+  if (name === 'puerta'){ const d = asm.S.door.group.position; return [d.clone().add(V(1.2,0.5,2.6)), d.clone()]; }
+  if (name === 'pesaje'){ const l = asm.S.legs[1]; const t = V(l.x,0.15,l.z); return [t.clone().add(V(-0.9,0.55,1.6)), t]; }
+  const R = 6.4;
+  const vf = THREE.MathUtils.degToRad(camera.fov/2), hf = Math.atan(Math.tan(vf)*(panelOff.v||1)*panelOff.aspect);
+  const d = R/Math.sin(Math.min(Math.atan(Math.tan(vf)*(panelOff.v||1)),hf))*0.9;
+  const t = V(0.3,4.0,0.4);
+  return [t.clone().add(V(0.55,0.35,0.85).normalize().multiplyScalar(d)), t];
+}
+function setCam(name, dur=1.1){
+  state.cam = name;
+  document.querySelectorAll('#camChips button').forEach(b => b.setAttribute('aria-pressed', b.dataset.cam === name));
+  const [p,t] = camPreset(name);
+  camera.near = 0.01; camera.far = 200; camera.updateProjectionMatrix();
+  scene.fog.near = 22; scene.fog.far = 45;
+  flyTo(p, t, dur);
+}
+
+const ease = k => k<.5 ? 4*k*k*k : 1 - Math.pow(-2*k+2,3)/2;
+const DUR = {inspect:4, fill:10, settle:2.5, bag:3.6, reset:2.2};
+let playing = !REDUCED;
+function pointAt(p, d){
+  d = ((d % p.total) + p.total) % p.total;
+  let i = 1; while (i < p.cum.length-1 && p.cum[i] < d) i++;
+  const k = (d - p.cum[i-1]) / Math.max(1e-6, p.cum[i]-p.cum[i-1]);
+  return p.pts[i-1].clone().lerp(p.pts[i], k);
+}
+function setPhase(p){ asm.phase = p; asm.phaseT = 0; }
+function stepAnim(dt){
+  const A = asm; if (!A) return;
+  const {hopBot} = SILO;
+  if (playing){
+    A.t += dt; A.phaseT += dt;
+    const k = d => Math.min(1, A.phaseT/d);
+    let flowing = false, bagging = false;
+    if (A.phase === 'inspect'){
+      const t = A.phaseT; A.door = t < 1.2 ? ease(t/1.2) : (t < 2.8 ? 1 : 1 - ease(Math.min(1,(t-2.8)/1.2)));
+      if (k(DUR.inspect) >= 1){ A.door = 0; setPhase('fill'); }
+    } else if (A.phase === 'fill'){
+      A.level = LEVEL*k(DUR.fill); flowing = true;
+      if (k(DUR.fill) >= 1) setPhase('settle');
+    } else if (A.phase === 'settle'){
+      if (k(DUR.settle) >= 1){ setPhase('bag'); A.bagKg = 0; }
+    } else if (A.phase === 'bag'){
+      const t = A.phaseT;
+      A.sack.visible = true;
+      A.gate = t < 0.3 ? t/0.3 : (t < 2.5 ? 1 : Math.max(0, 1-(t-2.5)/0.3));
+      const prev = A.bagKg;
+      A.bagKg = BAG*Math.min(1, Math.max(0,(t-0.3)/2.2));
+      A.level -= (A.bagKg - prev)/KG_FULL;
+      bagging = A.gate > 0.05 && A.bagKg < BAG;
+      const fillK = A.bagKg/BAG;
+      A.sackBody.scale.set(0.75+0.25*fillK, 0.55+0.45*fillK, 0.6+0.4*fillK);
+      const off = t > 2.9 ? ease(Math.min(1,(t-2.9)/0.7)) : 0;
+      A.sack.position.set(off*1.6, hopBot-0.42 - off*0.25, 0);
+      if (k(DUR.bag) >= 1){ A.bags++; A.bagKg = 0; if (A.bags % 3 === 0) setPhase('reset'); else setPhase('bag'); }
+    } else if (A.phase === 'reset'){
+      A.sack.visible = false;
+      A.level = Math.max(0, A.level*(1-k(DUR.reset)));
+      if (k(DUR.reset) >= 1){ A.level = 0; setPhase('inspect'); }
+    }
+    A.S.door.pivot.rotation.y = -1.5*A.door;
+    A.S.bag.gate.position.x = 0.3*A.gate;
+    A.S.setLevel(Math.max(0,A.level));
+    A.feedP.forEach(p => { p.mesh.visible = flowing; if (flowing) p.mesh.position.copy(pointAt(A.feed, p.off + A.t*4)); });
+    A.dropP.forEach(p => {
+      p.mesh.visible = bagging;
+      if (bagging){ const f = (p.off + A.t*2.2) % 1; p.mesh.position.set((Math.random()-0.5)*0.06, hopBot-0.45 - f*0.35, (Math.random()-0.5)*0.06); }
+    });
+    // peso
+    const target = A.level*KG_FULL;
+    let noise = 0;
+    if (flowing) noise = target*0.004*Math.sin(A.t*9.1) + 18*Math.sin(A.t*23);
+    if (bagging) noise = 6*Math.sin(A.t*13);
+    A.raw = target + noise;
+    A.disp += (A.raw - A.disp)*(1 - Math.exp(-dt*4));
+    const shown = A.disp < 10 ? 0 : Math.round(A.disp/10)*10;
+    const settled = !flowing && !bagging && Math.abs(A.disp - target) < 6;
+    A.stableT = settled ? A.stableT + dt : 0;
+    A.stable = A.stableT > 0.6;
+    A.moving = !A.stable && shown > 0;
+    A.shown = shown;
+    const signal = state.weigh && shown > 0;
+    A.cellLines.forEach(l => l.material = signal ? M.accent : M.ink);
+    A.pulses.forEach(p => { p.mesh.visible = signal; if (signal) p.mesh.position.copy(pointAt(p.path, p.off + A.t*p.path.speed)); });
+  }
+  if (state.weigh){
+    const key = `${A.shown}|${A.stable}|${A.moving}|${state.theme}`;
+    if (key !== A.lastKey && performance.now() - A.lastDraw > 90){
+      A.lastKey = key; A.lastDraw = performance.now();
+      drawIndicator(A.ind.screen, String(A.shown), {stable:A.stable && A.shown>0, zero:A.shown===0, moving:A.moving});
+      hudVal.textContent = fmt(A.shown);
+      lEst.classList.toggle('on', A.stable && A.shown>0);
+      lCero.classList.toggle('on', A.shown === 0);
+      lMov.classList.toggle('on', A.moving);
+    }
+  }
+  let msg = '', step = 0;
+  if (A.phase === 'inspect'){ msg = 'Se abre la puerta de inspección para revisar el interior.'; step = 1; }
+  if (A.phase === 'fill'){ msg = 'El forraje entra por arriba y el nivel sube.'; step = 2; }
+  if (A.phase === 'settle'){ msg = state.weigh ? `Silo con ${fmt(A.shown)} kg de forraje.` : 'Silo lleno, listo para ensacar.'; step = state.weigh ? 3 : 2; }
+  if (A.phase === 'bag'){ msg = `Llenando el costal ${A.bags+1} por la boca de ensaque${state.weigh ? `: salen ${fmt(A.bagKg)} kg` : ''}.`; step = 4; }
+  if (A.phase === 'reset'){ msg = 'Reinicia la demostración.'; }
+  if (!playing) msg = 'Animación en pausa.';
+  if (hudMsg.textContent !== msg) hudMsg.textContent = msg;
+  document.querySelectorAll('#steps li').forEach(li => li.classList.toggle('on', +li.dataset.s <= step && step > 0 && (state.weigh || li.dataset.s !== '3')));
+}
+const hudVal = document.getElementById('hudVal'), hudMsg = document.getElementById('hudMsg');
+const lEst = document.getElementById('lEst'), lCero = document.getElementById('lCero'), lMov = document.getElementById('lMov');
+function applyLabels(){ if (asm) asm.labels.children.forEach(c => c.visible = state.labels); }
+
+/* ---------- cámara ---------- */
+let camTween = null;
+function flyTo(pos, target, dur=1){
+  if (dur <= 0 || REDUCED){ camera.position.copy(pos); controls.target.copy(target); camTween = null; controls.update(); return; }
+  camTween = {p0:camera.position.clone(), t0:controls.target.clone(), p1:pos, t1:target, dur, start:performance.now()};
+}
+function updateTween(){
+  if (!camTween) return;
+  const k = Math.min(1, (performance.now() - camTween.start)/1000/camTween.dur);
+  const e = ease(k);
+  camera.position.lerpVectors(camTween.p0, camTween.p1, e);
+  controls.target.lerpVectors(camTween.t0, camTween.t1, e);
+  if (k >= 1) camTween = null;
+}
+controls.addEventListener('start', () => { camTween = null; if (state.mode === 'catalogo') controls.autoRotate = false; });
+let panelOff = {aspect:1};
+function fitTo(obj, factor=1){
+  const box = new THREE.Box3().setFromObject(obj);
+  const s = box.getBoundingSphere(new THREE.Sphere());
+  const vf = THREE.MathUtils.degToRad(camera.fov/2);
+  const hf = Math.atan(Math.tan(vf)*(panelOff.v||1)*panelOff.aspect);
+  const d = s.radius/Math.sin(Math.min(Math.atan(Math.tan(vf)*(panelOff.v||1)),hf))*factor;
+  const pos = s.center.clone().add(V(1.15,0.7,1.5).normalize().multiplyScalar(d));
+  camera.near = d/200; camera.far = d*30; camera.updateProjectionMatrix();
+  scene.fog.near = d*1.4; scene.fog.far = d*3.2;
+  flyTo(pos, s.center, firstFit ? 0 : 0.9);
+  firstFit = false;
+}
+
+/* ---------- tema ---------- */
+function applyTheme(name){
+  state.theme = name; T = THEMES[name];
+  document.documentElement.dataset.theme = name;
+  renderer.setClearColor(T.bg); scene.fog.color.setHex(T.bg);
+  M.fill.color.setHex(T.fill);
+  M.ink.color.setHex(T.ink); M.thin.color.setHex(T.thin); M.dim.color.setHex(T.dim);
+  M.accent.color.setHex(T.accent); M.hidden.color.setHex(T.hidden); M.cable.color.setHex(T.cable);
+  M.tube.color.setHex(T.dim); M.pipe.color.setHex(T.dim);
+  contentMat.color.setHex(T.accent);
+  gridMinorMat.color.setHex(T.gridMinor); gridMajorMat.color.setHex(T.gridMajor);
+  pulseMat.color.setHex(T.accent);
+  document.getElementById('themeBtn').textContent = name === 'plano' ? 'Papel' : 'Plano azul';
+  screens.forEach(f => f());
+  if (asm) asm.lastKey = '';
+}
+
+/* ---------- interfaz ---------- */
+const itemsEl = document.getElementById('items');
+ITEMS.forEach((it,i) => {
+  const li = document.createElement('li'); const b = document.createElement('button');
+  b.dataset.id = it.id; b.innerHTML = `<span>${String(i+1).padStart(2,'0')}</span>`; b.append(it.name);
+  b.addEventListener('click', () => { state.item = it.id; showCatalog(); });
+  li.append(b); itemsEl.append(li);
+});
+document.getElementById('capCatRow').hidden = true;
+document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+function setMode(m){
+  state.mode = m;
+  document.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-selected', b.dataset.mode === m));
+  document.getElementById('catPanel').hidden = m !== 'catalogo';
+  document.getElementById('asmPanel').hidden = m !== 'conjunto';
+  document.getElementById('hud').hidden = m !== 'conjunto';
+  document.getElementById('cartouche').hidden = m !== 'catalogo';
+  firstFit = true;
+  resize();
+  if (m === 'catalogo'){ asm = null; showCatalog(); } else { showAssembly(); }
+}
+document.querySelectorAll('#typeChips button').forEach(b => b.addEventListener('click', () => {
+  state.weigh = b.dataset.type === 'con';
+  document.querySelectorAll('#typeChips button').forEach(x => x.setAttribute('aria-pressed', x === b));
+  asm = null; showAssembly(false);
+}));
+const playBtn = document.getElementById('playBtn');
+function syncPlay(){ playBtn.textContent = playing ? 'Pausar' : 'Reproducir'; playBtn.setAttribute('aria-pressed', playing); }
+playBtn.addEventListener('click', () => { playing = !playing; syncPlay(); });
+document.getElementById('restartBtn').addEventListener('click', () => { if (!asm) return; showAssembly(false); playing = true; syncPlay(); });
+document.querySelectorAll('#camChips button').forEach(b => b.addEventListener('click', () => setCam(b.dataset.cam)));
+document.getElementById('labelsChk').addEventListener('change', e => { state.labels = e.target.checked; applyLabels(); });
+document.getElementById('themeBtn').addEventListener('click', () => applyTheme(state.theme === 'plano' ? 'papel' : 'plano'));
+syncPlay();
+
+/* ---------- tamaño ---------- */
+function resize(){
+  const w = innerWidth, h = innerHeight;
+  if (w < 50 || h < 50) return;
+  renderer.setSize(w, h, false); labelRenderer.setSize(w, h);
+  lineMats.forEach(m => m.resolution.set(w, h));
+  camera.aspect = w/h;
+  const panel = document.querySelector('.panel').getBoundingClientRect();
+  const mobile = w <= 760;
+  const ox = mobile ? 0 : panel.right/2;
+  const oy = mobile ? -panel.height/2 + 28 : 30;
+  camera.setViewOffset(w, h, -ox, -oy, w, h);
+  panelOff = {aspect: Math.max(0.3, (mobile ? w/(h - panel.height - 56) : (w - panel.right)/(h - 60)) || 1), v: Math.min(1, Math.max(0.3, ((mobile ? h - panel.height - 56 : h - 60)/h) || 1))};
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
+
+/* ---------- arranque ---------- */
+applyTheme('plano');
+resize();
+showCatalog();
+document.fonts && document.fonts.ready.then(() => { screens.forEach(f => f()); if (asm) asm.lastKey = ''; });
+window.__ready = true;
+document.getElementById('loading').remove();
+const clock = new THREE.Clock();
+function frame(){
+  const dt = Math.min(clock.getDelta(), 0.05);
+  if (state.mode === 'conjunto') stepAnim(dt);
+  updateTween();
+  controls.update();
+  renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+frame();
+</script>
+</body>
+</html>
